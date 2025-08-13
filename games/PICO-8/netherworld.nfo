@@ -1,0 +1,11 @@
+
+<game>
+    <title>Netherworld Tactics</title>
+    <platform>PICO-8</platform>
+    <genre>Tactical RPG</genre>
+    <developer>ColdGlassOMilk</developer>
+    <plot>Isometric tactical RPG with storyline elements inspired by Disgaea, featuring party deployment, height mechanics, and enemy encounters.</plot>
+    <version>1.0</version>
+    <license>MIT</license>
+    <website>https://github.com/ColdGlassOMilk/netherworld-tactics</website>
+</game>

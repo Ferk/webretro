@@ -1,0 +1,10 @@
+<game>
+    <title>LaserTank for PICO-8</title>
+    <platform>PICO-8</platform>
+    <genre>Puzzle</genre>
+    <developer>Tobias V. Langhoff</developer>
+    <plot>A complete 2D puzzle game featuring multiple movement and laser-firing mechanics, obstacle push physics, mirror reflections, undo options, and custom level-set clearing conditions.</plot>
+    <version>1.0</version>
+    <license>MIT</license>
+    <website>https://github.com/tobiasvl/lasertank-pico8</website>
+</game>
