@@ -7,6 +7,7 @@ import { Game } from '../entities/game';
 import Requests from '../services/requests';
 import Files from '../services/files';
 import Path from '../services/path';
+import Navigation from '../services/navigation';
 
 /**
  * @param {Object} parameters
@@ -58,8 +59,15 @@ export const GamesModal = ({ system, close }) => {
 	const [game,   setGame]   = useState(null);
 	const [games,  setGames]  = useState(sort(system.games));
 	const [status, setStatus] = useState({ game: null, progress: 0 });
+	const modal = useRef(/** @type {() => void} */ (null));
 
-	const [start, stop] = useIonModal(CoreModal, { system, game, close: () => stop() });
+	const closeGame = () => {
+		modal.current?.();
+		modal.current = null;
+		stop();
+	};
+
+	const [start, stop] = useIonModal(CoreModal, { system, game, close: closeGame });
 	const [alert] = useIonAlert();
 
 	/**
@@ -171,6 +179,7 @@ export const GamesModal = ({ system, close }) => {
 	const play = (game) => {
 		setGame(game);
 		start({ cssClass: 'fullscreen' });
+		modal.current = Navigation.push(closeGame);
 	}
 
 	return (

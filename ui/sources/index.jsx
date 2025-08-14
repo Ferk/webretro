@@ -10,6 +10,7 @@ import { SavesPage } from './pages/saves-page';
 import { CheatsPage } from './pages/cheats-page';
 import Database from './services/database';
 import Files from './services/files';
+import Navigation from './services/navigation';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -30,6 +31,8 @@ import '@ionic/react/css/display.css';
 /* Application stylesheets */
 import './styles/theme.css';
 import './styles/index.css';
+
+const appHistory = createMemoryHistory();
 
 function Junie() {
 
@@ -58,11 +61,20 @@ function Junie() {
 		}
 	};
 
-	useEffect(() => { registerServiceWorker(); }, []);
+	useEffect(() => {
+		Navigation.start(() => {
+			if (appHistory.location.pathname == '/home')
+				return false;
+
+			appHistory.push('/home');
+			return true;
+		});
+		registerServiceWorker();
+	}, []);
 
 	return (
 		<IonApp>
-			<IonReactMemoryRouter history={createMemoryHistory()}>
+			<IonReactMemoryRouter history={appHistory}>
 				<IonTabs>
 					<IonRouterOutlet>
 						<Route exact path="/home" component={HomePage} />

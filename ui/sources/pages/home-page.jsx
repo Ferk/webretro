@@ -1,10 +1,11 @@
 import { IonButton, IonButtons, IonCard, IonCardHeader, IonCardSubtitle, IonCardTitle, IonContent, IonHeader, IonIcon, IonLoading, IonPage, IonTitle, IonToolbar, useIonModal, useIonViewWillEnter } from '@ionic/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { informationCircleOutline, refreshOutline } from 'ionicons/icons';
 import { useToast } from '../hooks/toast';
 import { GamesModal } from '../modals/games-modal';
 import { System } from '../entities/system';
 import Requests from '../services/requests';
+import Navigation from '../services/navigation';
 
 /**
  * @returns {JSX.Element}
@@ -13,11 +14,16 @@ export const HomePage = () => {
 	const [systems, setSystems] = useState(/** @type {System[]} */ ([])   );
 	const [system,  setSystem]  = useState(/** @type {System}   */ (null)   );
 	const [loading, setLoading] = useState(/** @type {boolean}  */ (false));
+	const modal = useRef(/** @type {() => void} */ (null));
 
-	const [open, close] = useIonModal(GamesModal, { system, close: async () => {
+	const closeModal = async () => {
+		modal.current?.();
+		modal.current = null;
 		setSystems(await Requests.getSystems());
 		close();
-	}});
+	};
+
+	const [open, close] = useIonModal(GamesModal, { system, close: closeModal });
 
 	const version = window.junie_build.split('-')[0];
 	const build = window.junie_build.split('-')[1];
@@ -43,6 +49,7 @@ export const HomePage = () => {
 	const showModal = (system) => {
 		setSystem(system);
 		open({ cssClass: 'fullscreen' });
+		modal.current = Navigation.push(closeModal);
 	}
 
 	useIonViewWillEnter(async () => {
