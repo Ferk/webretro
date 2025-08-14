@@ -10,13 +10,15 @@
 }
 
 #root ion-content:not(.core) {
-	overflow: auto;
-	--overflow: hidden;
-	--offset-bottom: auto !important;
+	--overflow: auto;
 	scrollbar-width: none;
 }
 
-#root ion-content::-webkit-scrollbar {
+#root ion-content::part(scroll) {
+	scrollbar-width: none;
+}
+
+#root ion-content::part(scroll)::-webkit-scrollbar {
 	display: none;
 }
 
