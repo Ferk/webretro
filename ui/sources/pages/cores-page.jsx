@@ -58,7 +58,7 @@ export const CoresPage = () => {
 
 			<IonContent className="cores">
 				{systems.map(system =>
-					<IonCard key={system.name} onClick={() => showModal(system)}>
+					<IonCard key={system.name} tabIndex={0} onClick={() => showModal(system)}>
 						<IonCardHeader>
 							<IonCardTitle>{system.name}</IonCardTitle>
 							<IonCardSubtitle>{system.core_name} - {system.games.length} game{system.games.length > 1 && 's'}</IonCardSubtitle>

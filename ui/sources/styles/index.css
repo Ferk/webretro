@@ -26,6 +26,12 @@
 	margin: 8px;
 }
 
+#root .gamejin-focus {
+	outline: 2px solid var(--ion-color-primary);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 2px rgba(var(--ion-color-primary-rgb), 0.25);
+}
+
 
 /*
  * Cores

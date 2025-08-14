@@ -12,6 +12,7 @@ import { CheatsPage } from './pages/cheats-page';
 import Database from './services/database';
 import Files from './services/files';
 import Navigation from './services/navigation';
+import UIInput from './services/ui-input';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -70,6 +71,7 @@ function Gamejin() {
 			appHistory.push('/home');
 			return true;
 		});
+		UIInput.start();
 		registerServiceWorker();
 	}, []);
 
