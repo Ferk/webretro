@@ -6,7 +6,7 @@
 }
 
 #root .page ion-content {
-	max-width: 768px;
+	max-width: 80rem;
 }
 
 #root ion-content:not(.core) {
@@ -28,9 +28,9 @@
 
 
 /*
- * Systems
+ * Cores
  */
- #root .home ion-card {
+ #root .cores ion-card {
 	text-align: center;
 	cursor: pointer;
 }
@@ -43,6 +43,115 @@
 	text-align: center;
 	font-style: italic;
 	opacity: 0.5;
+}
+
+#root .games .game-library {
+	padding: 12px;
+	padding-bottom: 28px;
+}
+
+#root .games .game-section {
+	margin-bottom: 24px;
+}
+
+#root .games .game-section header {
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 4px 2px 10px;
+}
+
+#root .games .game-section h2 {
+	margin: 0;
+	font-size: 1rem;
+	font-weight: 700;
+}
+
+#root .games .game-section p {
+	margin: 4px 0 0;
+	color: var(--ion-color-medium);
+	font-size: .8rem;
+}
+
+#root .games .game-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+	gap: 12px;
+}
+
+#root .games .game-tile {
+	display: grid;
+	grid-template-rows: auto 1fr;
+	width: 100%;
+	min-width: 0;
+	padding: 0;
+	overflow: hidden;
+	text-align: left;
+	color: var(--ion-text-color);
+	background: rgba(var(--ion-text-color-rgb), 0.06);
+	border: 1px solid rgba(var(--ion-text-color-rgb), 0.12);
+	border-radius: 8px;
+	cursor: pointer;
+}
+
+#root .games .game-tile.available {
+	opacity: 0.58;
+}
+
+#root .games .game-tile:disabled {
+	cursor: default;
+	opacity: 0.35;
+}
+
+#root .games .game-thumb {
+	display: grid;
+	place-items: center;
+	aspect-ratio: 4 / 3;
+	background: rgba(var(--ion-text-color-rgb), 0.08);
+}
+
+#root .games .game-thumb ion-img,
+#root .games .game-thumb img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+#root .games .game-thumb ion-icon {
+	width: 32px;
+	height: 32px;
+	color: var(--ion-color-medium);
+}
+
+#root .games .game-meta {
+	display: grid;
+	grid-template-columns: 1fr 28px;
+	align-items: center;
+	gap: 6px;
+	min-height: 48px;
+	padding: 8px;
+}
+
+#root .games .game-name {
+	overflow: hidden;
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.2;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+#root .games .game-action {
+	display: grid;
+	place-items: center;
+	min-width: 28px;
+	min-height: 28px;
+	color: var(--ion-color-primary);
+}
+
+#root .games .game-action ion-progress-bar {
+	width: 28px;
 }
 
 #root .games ion-list {

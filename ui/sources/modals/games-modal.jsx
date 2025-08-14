@@ -1,5 +1,5 @@
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonItem, IonItemDivider, IonItemGroup, IonLabel, IonList, IonPage, IonProgressBar, IonTitle, IonToolbar, useIonAlert, useIonModal } from '@ionic/react';
-import { add, closeOutline, cloudDownloadOutline, playOutline, trashOutline } from 'ionicons/icons';
+import { closeOutline, cloudDownloadOutline, playOutline, trashOutline } from 'ionicons/icons';
 import { useEffect, useRef, useState } from 'react';
 import { CoreModal } from './core-modal';
 import { System } from '../entities/system';
@@ -52,7 +52,6 @@ const GameCard = ({ game, status, download, play, remove }) => {
  */
 export const GamesModal = ({ system, close }) => {
 	const list  = useRef(/** @type {HTMLIonListElement} */ (null));
-	const input = useRef(/** @type {HTMLInputElement} */ (null));
 
 	const sort = (games) => [...games.sort((g1, g2) => g1.rom < g2.rom ? -1 : 1)];
 
@@ -102,27 +101,6 @@ export const GamesModal = ({ system, close }) => {
 
 		games.find(game => game.rom == rom).installed = true;
 		setGames([...games]);
-	}
-
-	/**
-	 * @param {FileList} files
-	 * @returns {Promise<void>}
-	 */
-	const install = async (files) => {
-		if (!files?.length)
-			return;
-
-		const pending = [...files].map(file => new Game(system, file.name, false));
-		const available = games.filter(g1 => !pending.find(g2 => g1.rom == g2.rom));
-		const updated = [...pending, ...available];
-		setGames(updated);
-
-		for (const file of files)
-			await read(updated, file.name, file.stream(), file.size);
-
-		input.current.value = null;
-		setStatus({ game: null, progress: 0 });
-		await update();
 	}
 
 	/**
@@ -189,10 +167,6 @@ export const GamesModal = ({ system, close }) => {
 				<IonToolbar>
 					<IonTitle>{system.name}</IonTitle>
 					<IonButtons slot="end">
-						<IonButton onClick={() => input.current.click()}>
-							<input type="file" ref={input} onChange={e => install(e.target.files)} multiple hidden />
-							<IonIcon slot="icon-only" icon={add} />
-						</IonButton>
 						<IonButton onClick={close}>
 							<IonIcon slot="icon-only" icon={closeOutline} />
 						</IonButton>

@@ -4,8 +4,9 @@ import { createRoot } from 'react-dom/client';
 import { Redirect, Route } from 'react-router';
 import { IonReactMemoryRouter } from '@ionic/react-router';
 import { IonApp, IonIcon, IonLabel, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs, setupIonicReact, useIonLoading } from '@ionic/react';
-import { gameController, keyOutline, save } from 'ionicons/icons';
+import { hardwareChipOutline, gameController, keyOutline, save } from 'ionicons/icons';
 import { HomePage } from './pages/home-page';
+import { CoresPage } from './pages/cores-page';
 import { SavesPage } from './pages/saves-page';
 import { CheatsPage } from './pages/cheats-page';
 import Database from './services/database';
@@ -78,6 +79,7 @@ function Gamejin() {
 				<IonTabs>
 					<IonRouterOutlet>
 						<Route exact path="/home" component={HomePage} />
+						<Route exact path="/cores" component={CoresPage} />
 						<Route exact path="/saves"  component={SavesPage}  />
 						<Route exact path="/cheats" component={CheatsPage} />
 						<Route exact path="/" render={() => <Redirect to="/home" />} />
@@ -87,6 +89,10 @@ function Gamejin() {
 						<IonTabButton tab="home" href="/home">
 							<IonIcon icon={gameController} />
 							<IonLabel>Games</IonLabel>
+						</IonTabButton>
+						<IonTabButton tab="cores" href="/cores">
+							<IonIcon icon={hardwareChipOutline} />
+							<IonLabel>Cores</IonLabel>
 						</IonTabButton>
 						<IonTabButton tab="saves" href="/saves">
 							<IonIcon icon={save} />
