@@ -194,6 +194,30 @@ export const CoreModal = ({ system, game, close }) => {
 			: core.current.touch(touches[0], rect, width, height);
 	}
 
+	/** @param {EventTarget} target @returns {boolean} */
+	const isEditable = (target) => {
+		const element = /** @type {HTMLElement} */ (target);
+		const tag = element?.tagName?.toLowerCase();
+		return element?.isContentEditable || ['input', 'select', 'textarea'].includes(tag);
+	}
+
+	/** @param {KeyboardEvent} event @returns {void} */
+	const keyboard = (event) => {
+		if (isEditable(event.target))
+			return;
+
+		const messages = hardware.current.keyboard(event);
+		if (messages.length)
+			core.current.input(messages);
+	}
+
+	/** @returns {void} */
+	const releaseKeyboard = () => {
+		const messages = hardware.current.releaseKeyboard();
+		if (messages.length)
+			core.current.input(messages);
+	}
+
 	/** @returns {void} */
 	const save = () => alert('Current state will be saved.', [
 		{ text: 'Confirm', handler: () => core.current.save() },
@@ -256,6 +280,18 @@ export const CoreModal = ({ system, game, close }) => {
 		return () => {
 			stopped = true;
 			cancelAnimationFrame(frame);
+		};
+	}, []);
+
+	useEffect(() => {
+		addEventListener('keydown', keyboard);
+		addEventListener('keyup', keyboard);
+		addEventListener('blur', releaseKeyboard);
+
+		return () => {
+			removeEventListener('keydown', keyboard);
+			removeEventListener('keyup', keyboard);
+			removeEventListener('blur', releaseKeyboard);
 		};
 	}, []);
 

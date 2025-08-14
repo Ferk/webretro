@@ -10,6 +10,12 @@ export default class Input {
 	/** @type {{[key: number]: boolean}} */
 	#gamepad = {};
 
+	/** @type {{[key: string]: boolean}} */
+	#keys = {};
+
+	/** @type {{[key: number]: boolean}} */
+	#keyboard = {};
+
 	/**
 	 * @param {DOMRect} rect
 	 * @param {number} x
@@ -125,6 +131,56 @@ export default class Input {
 		return messages;
 	}
 
+	/**
+	 * @param {KeyboardEvent} event
+	 * @returns {InputMessage[]}
+	 */
+	keyboard(event) {
+		const id = Input.Keyboard.map(event);
+		if (id == null)
+			return [];
+
+		event.preventDefault();
+
+		if (event.repeat)
+			return [];
+
+		this.#keys[event.code || event.key] = event.type == 'keydown';
+
+		const state = {};
+		for (const [key, button] of Object.entries(Input.Keyboard.BUTTONS))
+			state[button] = state[button] || !!this.#keys[key];
+
+		const messages = [];
+		for (const id of Input.Joypad.ALL) {
+			const value = !!state[id];
+			if (this.#keyboard[id] != value) {
+				messages.push({ device: Input.Device.JOYPAD, id, value });
+				this.#keyboard[id] = value;
+			}
+		}
+
+		return messages;
+	}
+
+	/**
+	 * @returns {InputMessage[]}
+	 */
+	releaseKeyboard() {
+		this.#keys = {};
+
+		const messages = [];
+		for (const id of Input.Joypad.ALL) {
+			if (this.#keyboard[id]) {
+				messages.push({ device: Input.Device.JOYPAD, id, value: false });
+				this.#keyboard[id] = false;
+			}
+		}
+
+		return messages;
+	}
+
+
 	static Device = class {
 		static get JOYPAD()  { return 1; }
 		static get POINTER() { return 6; }
@@ -158,5 +214,31 @@ export default class Input {
 		static get Y()       { return 1; }
 		static get PRESSED() { return 2; }
 		static get COUNT()   { return 3; }
+	}
+
+	static Keyboard = class {
+		static BUTTONS = {
+			ArrowUp: Input.Joypad.UP,
+			ArrowDown: Input.Joypad.DOWN,
+			ArrowLeft: Input.Joypad.LEFT,
+			ArrowRight: Input.Joypad.RIGHT,
+			Enter: Input.Joypad.START,
+			Backspace: Input.Joypad.SELECT,
+			KeyZ: Input.Joypad.B,
+			KeyY: Input.Joypad.B,
+			KeyX: Input.Joypad.A,
+			KeyA: Input.Joypad.Y,
+			KeyS: Input.Joypad.X,
+			KeyQ: Input.Joypad.L,
+			KeyW: Input.Joypad.R,
+		};
+
+		/**
+		 * @param {KeyboardEvent} event
+		 * @returns {number}
+		 */
+		static map(event) {
+			return this.BUTTONS[event.code] ?? this.BUTTONS[event.key];
+		}
 	}
 }
