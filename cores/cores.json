@@ -52,6 +52,8 @@
 	"retro8": {
 		"name": "Retro8",
 		"repository": "retro8",
+		"preinclude": "../wasi-compat.h",
+		"preincludeFiles": ["src/lua/loslib.c", "*/lua/loslib.c", "loslib.c"],
 		"systems": ["PICO-8"]
 	},
 	"tic80": {
