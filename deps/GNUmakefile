@@ -73,12 +73,27 @@ OBJ = \
 	libretro-common/audio/resampler/audio_resampler.o \
 	libretro-common/audio/resampler/drivers/sinc_resampler.o
 
-libz.a:
+ZLIB_OBJ = \
+	zlib/adler32.o \
+	zlib/crc32.o \
+	zlib/deflate.o \
+	zlib/infback.o \
+	zlib/inffast.o \
+	zlib/inflate.o \
+	zlib/inftrees.o \
+	zlib/trees.o \
+	zlib/zutil.o \
+	zlib/compress.o \
+	zlib/uncompr.o \
+	zlib/gzclose.o \
+	zlib/gzlib.o \
+	zlib/gzread.o \
+	zlib/gzwrite.o
+
+libz.a: $(ZLIB_OBJ)
 	@echo Building libz.a...
-	@cd zlib && ./configure $(QUIET)
-	@$(MAKE) -C zlib libz.a CC="$(CC)" AR="$(AR)" RANLIB="$(RANLIB)" $(QUIET)
-	@cp zlib/libz.a .
-	@$(MAKE) -C zlib distclean $(QUIET)
+	@$(AR) rcs $@ $^
+	@$(RANLIB) $@
 
 libretro.a:
 	@echo Building libretro.a...
@@ -86,7 +101,13 @@ libretro.a:
 	@$(AR) rcs libretro.a $(OBJ)
 
 clean:
-	@rm -f $(OBJ) libretro.a libz.a
+	@rm -f $(OBJ) $(ZLIB_OBJ) zlib/zconf.h libretro.a libz.a
 
 %.o: %.c
 	@$(CC) -c -o $@ -Ilibretro-common/include $^ $(QUIET)
+
+zlib/%.o: zlib/%.c zlib/zconf.h
+	@$(CC) -DHAVE_UNISTD_H=1 -c -o $@ $< $(QUIET)
+
+zlib/zconf.h: zlib/zconf.h.in
+	@cp $< $@
