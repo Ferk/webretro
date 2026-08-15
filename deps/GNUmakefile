@@ -84,11 +84,7 @@ ZLIB_OBJ = \
 	zlib/trees.o \
 	zlib/zutil.o \
 	zlib/compress.o \
-	zlib/uncompr.o \
-	zlib/gzclose.o \
-	zlib/gzlib.o \
-	zlib/gzread.o \
-	zlib/gzwrite.o
+	zlib/uncompr.o
 
 libz.a: $(ZLIB_OBJ)
 	@echo Building libz.a...
