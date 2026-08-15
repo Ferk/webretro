@@ -74,12 +74,13 @@ export default class Filesystem {
 	 * @param {() => Promise<number>} action
 	 * @returns {Promise<number>}
 	 */
-	static async #catch(action, err_val) {
+	static async #catch(action, err_val, log = true) {
 		try {
 			return await action();
 
 		} catch (e) {
-			console.error(e);
+			if (log)
+				console.error(e);
 			return err_val;
 		}
 	}
@@ -107,7 +108,7 @@ export default class Filesystem {
 	size(path) {
 		return Filesystem.#catch(() => {
 			return Filesystem.#exec(path, false, (file) => file.getSize());
-		}, -1);
+		}, -1, false);
 	}
 
 	/**
@@ -131,6 +132,29 @@ export default class Filesystem {
 	write(path, buffer, offset) {
 		return Filesystem.#catch(() => {
 			return Filesystem.#exec(path, true, (file) => file.write(buffer, { at: offset }));
+		}, -1);
+	}
+
+	/**
+	 * @param {string} path
+	 * @returns {number | Promise<number>}
+	 */
+	mkdir(path) {
+		return Filesystem.#catch(async () => {
+			await Filesystem.#directory(`${path}/.`, true);
+			return 0;
+		}, -1);
+	}
+
+	/**
+	 * @param {string} path
+	 * @returns {number | Promise<number>}
+	 */
+	rmdir(path) {
+		return Filesystem.#catch(async () => {
+			const directory = await Filesystem.#directory(path);
+			await directory.removeEntry(Filesystem.#parse(path).filename);
+			return 0;
 		}, -1);
 	}
 

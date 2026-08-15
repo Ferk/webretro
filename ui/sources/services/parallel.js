@@ -38,7 +38,9 @@ export function instrumentContext(context) {
 				break;
 			case 'object':
 				const is_error = result?.constructor.name.endsWith('Error');
-				const stringified = JSON.stringify(is_error ? result.stack : result);
+				const stringified = JSON.stringify(is_error
+					? { name: result.name, message: result.message, stack: result.stack }
+					: result);
 				const encoded_obj = new TextEncoder().encode(stringified);
 				if (sab.buffer.byteLength < 12 + encoded_obj.byteLength)
 					sab.buffer.grow(12 + encoded_obj.byteLength);
@@ -74,11 +76,13 @@ export function parseMessage(sab) {
 			const obj_buf = new Uint8Array(sab.buffer, 12, sab[2]).slice();
 			return JSON.parse(new TextDecoder().decode(obj_buf));
 		case TYPE_ERROR:
-			const error = new Error();
 			const err_buf = new Uint8Array(sab.buffer, 12, sab[2]).slice();
-			error.stack = JSON.parse(new TextDecoder().decode(err_buf));
+			const err_data = JSON.parse(new TextDecoder().decode(err_buf));
+			const error = new Error(err_data.message);
+			error.name = err_data.name;
+			error.stack = err_data.stack;
 			throw error;
-		}
+	}
 }
 
 /**

@@ -184,7 +184,12 @@ export const CoreModal = ({ system, game, close }) => {
 				await core.init(system.name, game.rom, canvas.current).then(() => resize());
 			} catch (e) {
 				console.error(e);
-				alert({ header: e.stack.split('\n')[0], message: e.stack.split('\n')[1], buttons: [ 'OK' ] })
+				const stack = e?.stack?.split('\n') ?? [];
+				alert({
+					header: stack[0] || e?.name || 'Core failed',
+					message: stack.slice(1, 3).join('\n') || e?.message || String(e),
+					buttons: [ 'OK' ],
+				})
 				core.current?.stop(); close();
 			}
 		})()

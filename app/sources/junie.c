@@ -57,6 +57,7 @@ static struct CTX {
 	JunieVideo video;
 	JunieAudio audio;
 	JunieVariable variables[INT8_MAX];
+	char *error;
 } CTX;
 
 static void core_log_params(const char *func, const char *fmt, ...)
@@ -117,6 +118,24 @@ static char *core_strfmt(const char *fmt, ...)
 	va_end(args);
 
 	return str;
+}
+
+static void core_set_error(const char *fmt, ...)
+{
+	va_list args;
+	va_list args_copy;
+
+	va_start(args, fmt);
+	va_copy(args_copy, args);
+
+	size_t size = vsnprintf(NULL, 0, fmt, args_copy) + 1;
+
+	free(CTX.error);
+	CTX.error = calloc(size, 1);
+	vsnprintf(CTX.error, size, fmt, args);
+
+	va_end(args_copy);
+	va_end(args);
 }
 
 static void core_log_cb(enum retro_log_level level, const char *fmt, ...)
@@ -520,16 +539,26 @@ bool JunieStartGame()
 		if (!CTX.system.need_fullpath) {
 			fseek(file, 0, SEEK_SET);
 			CTX.game.data = calloc(CTX.game.size, 1);
-			fread((void *) CTX.game.data, 1, CTX.game.size, file);
+			size_t read = fread((void *) CTX.game.data, 1, CTX.game.size, file);
+			if (read != CTX.game.size) {
+				fclose(file);
+				core_set_error("Could not read the complete game file: %s", CTX.game.path);
+				return false;
+			}
 		}
 
 		fclose(file);
+	} else {
+		core_set_error("Game file was not found in browser storage: %s", CTX.game.path);
+		return false;
 	}
 
 	CTX.initialized = CTX.sym.retro_load_game(&CTX.game);
 
-	if (!CTX.initialized)
+	if (!CTX.initialized) {
+		core_set_error("The %s core rejected this game: %s", CTX.system.library_name, CTX.game.path);
 		return CTX.initialized;
+	}
 
 	CTX.sym.retro_get_system_av_info(&CTX.av);
 	CTX.sym.retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
@@ -544,13 +573,22 @@ bool JunieStartGame()
 	return CTX.initialized;
 }
 
+const char *JunieGetError()
+{
+	return CTX.error;
+}
+
 void JunieDestroy()
 {
 	CTX.destroying = true;
-	sthread_join(CTX.core_thread);
-	sthread_join(CTX.memory_thread);
-	scond_free(CTX.cond);
-	slock_free(CTX.mutex);
+	if (CTX.core_thread)
+		sthread_join(CTX.core_thread);
+	if (CTX.memory_thread)
+		sthread_join(CTX.memory_thread);
+	if (CTX.cond)
+		scond_free(CTX.cond);
+	if (CTX.mutex)
+		slock_free(CTX.mutex);
 
 	CTX.sym.retro_deinit();
 
@@ -567,6 +605,7 @@ void JunieDestroy()
 	for (size_t i = 0; i < JUN_PATH_MAX; i++)
 		free(CTX.paths[i]);
 
+	free(CTX.error);
 	free(CTX.memory);
 	free((void *) CTX.game.data);
 

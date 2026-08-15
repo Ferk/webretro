@@ -84,12 +84,19 @@ export default class WASI {
 
 	/**
 	 * @param {number} ptr
+	 * @param {number} length
 	 * @returns {string}
 	 */
-	#str_to_js(ptr) {
-		const buf = new Uint8Array(this.#memory.buffer, ptr);
-		let length = 0; for (; buf[length] != 0; length++);
-		return new TextDecoder().decode(buf.slice(0, length));
+	#str_to_js(ptr, length = null) {
+		const buf = length == null
+			? new Uint8Array(this.#memory.buffer, ptr)
+			: new Uint8Array(this.#memory.buffer, ptr, length);
+
+		if (length != null)
+			return new TextDecoder().decode(new Uint8Array(buf));
+
+		let size = 0; for (; buf[size] != 0; size++);
+		return new TextDecoder().decode(new Uint8Array(buf.slice(0, size)));
 	}
 
 	/**
@@ -250,15 +257,17 @@ export default class WASI {
 				return errno;
 			},
 			path_filestat_get: (fd, flags, path, path_len, buf) => {
-				const size = this.#filesystem.size(this.#str_to_js(path));
+				const size = this.#filesystem.size(this.#str_to_js(path, path_len));
 				if (size == -1)
 					return this.#WASI_ERRNO_NOENT;
 
 				return this.#WASI_ERRNO_SUCCESS;
 			},
 			path_open: (dirfd, dirflags, path, path_len, o_flags, fs_rights_base, fs_rights_inheriting, fs_flags, fd) => {
+				const file_path = this.#str_to_js(path, path_len);
+
 				if (!(o_flags & this.#O_CREAT)) {
-					const size = this.#filesystem.size(this.#str_to_js(path));
+					const size = this.#filesystem.size(file_path);
 					if (size == -1)
 						return this.#WASI_ERRNO_NOENT;
 				}
@@ -266,13 +275,28 @@ export default class WASI {
 				this.#set_uint32(fd, this.#next_fd);
 
 				this.#fds[this.#next_fd] = {
-					path: this.#str_to_js(path),
+					path: file_path,
 					offset: 0,
 				};
 
 				this.#next_fd++;
 
 				return this.#WASI_ERRNO_SUCCESS;
+			},
+			path_create_directory: (fd, path, path_len) => {
+				return this.#filesystem.mkdir(this.#str_to_js(path, path_len)) == -1
+					? this.#WASI_ERRNO_NOENT
+					: this.#WASI_ERRNO_SUCCESS;
+			},
+			path_remove_directory: (fd, path, path_len) => {
+				return this.#filesystem.rmdir(this.#str_to_js(path, path_len)) == -1
+					? this.#WASI_ERRNO_NOENT
+					: this.#WASI_ERRNO_SUCCESS;
+			},
+			path_unlink_file: (fd, path, path_len) => {
+				return this.#filesystem.remove(this.#str_to_js(path, path_len)) == -1
+					? this.#WASI_ERRNO_NOENT
+					: this.#WASI_ERRNO_SUCCESS;
 			},
 			poll_oneoff: (in_, out_, nsubscriptions, nevents) => {
 				if (this.#get_uint32(in_ + 8) == this.#WASI_EVENTTYPE_CLOCK)

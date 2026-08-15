@@ -15,12 +15,12 @@ export class Game {
 	installed;
 
 	/**
-	 * @param {System} system
+	 * @param {System|string} system
 	 * @param {string} rom
 	 * @param {boolean} installed
 	 */
 	constructor(system, rom, installed) {
-		this.system = system.name;
+		this.system = typeof system == 'string' ? system : system.name;
 		this.rom = rom;
 		this.installed = installed;
 		this.name = Path.name(rom);

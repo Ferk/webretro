@@ -124,7 +124,9 @@ export const GamesModal = ({ system, close }) => {
 	const download = async (game) => {
 		setStatus({ game: game.rom, progress: 0 });
 
-		const response = await fetch(`${location.origin}/games/${system.name}/${game.rom}`);
+		const systemPath = encodeURIComponent(system.name);
+		const romPath = game.rom.split('/').map(encodeURIComponent).join('/');
+		const response = await fetch(`games/${systemPath}/${romPath}`);
 		await read(games, game.rom, response.body, response.headers.get('Content-Length'));
 
 		setStatus({ game: null, progress: 0 });

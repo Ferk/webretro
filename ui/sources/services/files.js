@@ -88,7 +88,8 @@ export default class Files {
 	static async write(path, data) {
 		const fs = await this.#fs();
 
-		await Files.remove(path);
+		if (await fs.size(path) >= 0)
+			await fs.remove(path);
 		await fs.write(path, data, 0);
 	}
 

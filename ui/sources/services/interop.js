@@ -164,6 +164,7 @@ export default class Interop {
 
 		this.#wrap('Create',             null,      ['string', 'string']);
 		this.#wrap('StartGame',          'boolean', []);
+		this.#wrap('GetError',           'string',  []);
 		this.#wrap('Destroy',            null,      []);
 
 		this.#wrap('SetAudio',           null,      ['boolean']);
@@ -216,10 +217,13 @@ export default class Interop {
 	}
 
 	/** @returns {Promise<void>} */
-	start() { this.StartGame(); }
+	start() {
+		if (!this.StartGame())
+			throw new Error(this.GetError() || 'The core could not load this game.');
+	}
 
 	/** @returns {Promise<void>} */
-	stop() { this.Destroy(); }
+	stop() { this.Destroy?.(); }
 
 	/** @param {boolean} enable @returns {Promise<void>} */
 	audio(enable) { this.SetAudio(enable); }

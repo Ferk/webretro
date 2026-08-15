@@ -1,28 +1,31 @@
 import { Game } from '../entities/game';
 import { System } from '../entities/system';
 import Files from './files';
-import Path from './path';
 
 export default class Requests {
+	static #manifest = null;
+
+	/**
+	 * @returns {Promise<{ [system: string]: string[] }>}
+	 */
+	static async #getManifest() {
+		if (!this.#manifest)
+			this.#manifest = await fetch('games.json', { cache: 'no-cache' }).then(res => res.ok ? res.json() : {}).catch(error => {
+				console.error(error);
+				return {};
+			});
+
+		return this.#manifest;
+	}
+
 	/**
 	 * @param {System} system
-	 * @returns {Promise<void>}
+	 * @param {{ [system: string]: string[] }} manifest
+	 * @returns {Game[]}
 	 */
-	static async #fetchGames(system) {
-		try {
-			const folder = await fetch(`games/${system.name}/`);
-
-			const html = document.createElement('html');
-			html.innerHTML = await folder.text();
-
-			const elements = Array.from(html.querySelectorAll('a'));
-			system.games = elements.map(a => new Object({ name: Path.name(a.innerText), rom: a.innerText }))
-				.filter(game => game.rom.includes('.') && game.rom != '.' && !game.rom.endsWith('/') && !game.rom.endsWith('.png'));
-
-		} catch (e) {
-			console.error(e);
-			system.games = [];
-		}
+	static #gamesFor(system, manifest) {
+		const games = manifest[system.name] ?? [];
+		return games.map(rom => new Game(system, rom, false));
 	}
 
 	/**
@@ -30,7 +33,12 @@ export default class Requests {
 	 */
 	static async refreshLibrary() {
 		const library = await Files.Library.get();
-		await Promise.all(library.map(this.#fetchGames));
+		this.#manifest = null;
+		const manifest = await this.#getManifest();
+
+		for (const system of library)
+			system.games = this.#gamesFor(system, manifest);
+
 		await Files.Library.update(library);
 	}
 
@@ -40,16 +48,18 @@ export default class Requests {
 	static async getSystems() {
 		const systems = await Files.Library.get();
 		const installed = await Files.Games.get();
+		const manifest = await this.#getManifest();
 
 		for (const system of systems) {
 			const games = installed.filter(x => x.system == system.name);
+			const available = this.#gamesFor(system, manifest);
 
 			system.games = [
-				...games.filter(x => x.system == system.name),
-				...system.games.filter(game => !games.find(installed => game.rom == installed.rom)),
+				...games,
+				...available.filter(game => !games.find(installed => game.rom == installed.rom)),
 			];
 
-			if (system.name == '2048')
+			if (system.name == '2048' && !system.games.find(game => game.rom == '2048'))
 				system.games.push(new Game(system, '2048', true));
 		}
 

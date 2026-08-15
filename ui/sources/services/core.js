@@ -83,8 +83,8 @@ export default class Core {
 	 * @returns {Promise<void>}
 	 */
 	async start(settings, cheats) {
-		await this.settings(settings);
 		await this.#interop.start();
+		await this.settings(settings);
 		await this.cheats(cheats);
 	}
 

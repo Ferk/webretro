@@ -46,6 +46,7 @@ pages: all
 	@rm -rf dist/games
 	@mkdir -p dist/games
 	@test ! -d games || cp -a games/. dist/games/
+	@node scripts/build-games-manifest.mjs dist/games dist/games.json
 	@touch dist/.nojekyll
 
 deps:
