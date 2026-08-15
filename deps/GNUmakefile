@@ -24,7 +24,7 @@ else
     $(error Unsupported OS: $(UNAME_S))
 endif
 
-DEFINES := -D__EMSCRIPTEN__ -I$(DEPS_DIR)/libretro-common/include
+DEFINES := -I$(DEPS_DIR)/libretro-common/include
 include ../GNUmakefile.common
 
 all: wasi-sdk zlib libretro-common libz.a libretro.a
@@ -101,6 +101,9 @@ clean:
 
 %.o: %.c
 	@$(CC) -c -o $@ -Ilibretro-common/include $^ $(QUIET)
+
+libretro-common/rthreads/rthreads.o: libretro-common/rthreads/rthreads.c
+	@$(CC) -D__EMSCRIPTEN__ -D__ANDROID__ -c -o $@ -Ilibretro-common/include $< $(QUIET)
 
 zlib/%.o: zlib/%.c zlib/zconf.h
 	@$(CC) -DHAVE_UNISTD_H=1 -c -o $@ $< $(QUIET)
