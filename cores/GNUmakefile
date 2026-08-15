@@ -3,29 +3,94 @@ LIBRARIES := $(shell jq -r 'keys[]' cores.json)
 DEFINES := -D__EMSCRIPTEN__
 include ../GNUmakefile.common
 
+BUILD_JOBS := -j 8
 BUILD_FLAGS := \
-	-j 8 platform=emscripten HAVE_OPENGL=0 \
+	$(BUILD_JOBS) platform=emscripten HAVE_OPENGL=0 STATIC_LINKING=1 \
 	CC="$(CC)" CXX="$(CXX)" AR="$(AR)" RANLIB="$(RANLIB)"
+CORE_FLAGS := HAVE_OPENGL=0 STATIC_LINKING=1 AR="$(AR)" RANLIB="$(RANLIB)"
 
 all: $(LIBRARIES:%=lib%.a)
 
 clean: $(LIBRARIES:%=clean-%)
 
 fetch-%:
-	@target=`pwd`/lib$*.a && \
-	name=`jq -r '."$*".repository // "$*"' cores.json` && \
-	owner=`jq -r '."$*".owner // "libretro"' cores.json` && \
-	branch=`jq -r '."$*".branch // "master"' cores.json` && \
-	echo Fetching $$name... && \
-	git -C $$name pull $(QUIET) || git clone -b $$branch --recurse https://github.com/$$owner/$$name.git $(QUIET)
+	@name=`jq -r '."$*".repository // "$*"' cores.json` && \
+	if test -d "$$name"; then \
+		echo Using vendored $$name...; \
+	else \
+		echo "Missing core source: cores/$$name" >&2; \
+		echo "Run git submodule update --init --recursive or add the core as a submodule." >&2; \
+		exit 1; \
+	fi
 
 lib%.a: fetch-%
 	@target=`pwd`/lib$*.a && \
 	name=`jq -r '."$*".repository // "$*"' cores.json` && \
 	makedir=`jq -r '."$*".directory // ""' cores.json` && \
 	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
+	cmake=`jq -r '."$*".cmake // false' cores.json` && \
+	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
+	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
+	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
+	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
+	flag_args= && \
+	if test -n "$$c_flags"; then flag_args="$$flag_args CFLAGS=$$c_flags"; fi && \
+	if test -n "$$cxx_flags"; then flag_args="$$flag_args CXXFLAGS=$$cxx_flags"; fi && \
+	cc='$(CC)' && \
+	cxx='$(CXX)' && \
+	ar='$(AR)' && \
+	ranlib='$(RANLIB)' && \
+	if test "`jq -r '."$*".useEmscripten // false' cores.json`" = true; then \
+		cc=`command -v emcc`; \
+		cxx=`command -v em++`; \
+		ar=`command -v emar`; \
+		ranlib=`command -v emranlib`; \
+	fi && \
+	if test "`jq -r '."$*".stripEmccSettings // false' cores.json`" = true; then \
+		cc="`pwd`/../scripts/wasi-filter-cc $$cc"; \
+		cxx="`pwd`/../scripts/wasi-filter-cc $$cxx"; \
+	fi && \
 	echo Building lib$*.a... && \
-	$(MAKE) -C $$name/$$makedir -f $$makefile TARGET=$$target $(BUILD_FLAGS) $(QUIET)
+	if test "$$cmake" = true; then \
+		builddir=`pwd`/../build/cores/$$name && \
+		cmake -S $$name/$$makedir -B $$builddir \
+			-DCMAKE_BUILD_TYPE=Release \
+			-DCMAKE_SYSTEM_NAME=Generic \
+			-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
+			-DCMAKE_C_COMPILER="$(WASI_SDK)/bin/clang" \
+			-DCMAKE_CXX_COMPILER="$(WASI_SDK)/bin/clang++" \
+			-DCMAKE_AR="$(AR)" \
+			-DCMAKE_RANLIB="$(RANLIB)" \
+			-DCMAKE_C_FLAGS="$(DEFINES)" \
+			-DCMAKE_CXX_FLAGS="$(DEFINES)" \
+			-DBUILD_LIBRETRO=ON \
+			-DLIBRETRO_STATIC=ON \
+			-DSKIP_LIBRARY=ON \
+			-DDISABLE_FRONTENDS=ON \
+			-DBUILD_QT=OFF \
+			-DBUILD_SDL=OFF \
+			-DBUILD_GL=OFF \
+			-DBUILD_GLES2=OFF \
+			-DBUILD_GLES3=OFF \
+			-DUSE_ZLIB=OFF \
+			-DUSE_PNG=OFF \
+			-DUSE_SQLITE3=OFF \
+			-DUSE_LUA=OFF \
+			-DUSE_ELF=OFF \
+			-DUSE_EPOXY=OFF \
+			$(QUIET) && \
+		cmake --build $$builddir --target $*_libretro --parallel 8 $(QUIET) && \
+		rm -rf `pwd`/$*-libs && \
+		mkdir -p `pwd`/$*-libs && \
+		find $$builddir/lib -name "*.a" -exec cp -f {} `pwd`/$*-libs/ \; && \
+		find $$builddir -name "$*_libretro*.a" -print -quit | xargs -r cp -f -t `pwd` && \
+		cp -f `pwd`/$*_libretro*.a $$target; \
+	else \
+		$(MAKE) -C $$name/$$makedir -f $$makefile TARGET=$$target \
+			$(BUILD_JOBS) HAVE_OPENGL=0 STATIC_LINKING=1 AR="$$ar" RANLIB="$$ranlib" \
+			platform=$$platform CC="$$cc" CXX="$$cxx" \
+			$$flag_args $$extra_flags $(QUIET); \
+	fi
 
 clean-%:
 	@rm -f `pwd`/lib$*.a
@@ -33,7 +98,31 @@ clean-%:
 	name=`jq -r '."$*".repository // "$*"' cores.json` && \
 	makedir=`jq -r '."$*".directory // ""' cores.json` && \
 	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
+	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
+	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
+	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
+	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
+	flag_args= && \
+	if test -n "$$c_flags"; then flag_args="$$flag_args CFLAGS=$$c_flags"; fi && \
+	if test -n "$$cxx_flags"; then flag_args="$$flag_args CXXFLAGS=$$cxx_flags"; fi && \
+	cc='$(CC)' && \
+	cxx='$(CXX)' && \
+	ar='$(AR)' && \
+	ranlib='$(RANLIB)' && \
+	if test "`jq -r '."$*".useEmscripten // false' cores.json`" = true; then \
+		cc=`command -v emcc`; \
+		cxx=`command -v em++`; \
+		ar=`command -v emar`; \
+		ranlib=`command -v emranlib`; \
+	fi && \
+	if test "`jq -r '."$*".stripEmccSettings // false' cores.json`" = true; then \
+		cc="`pwd`/../scripts/wasi-filter-cc $$cc"; \
+		cxx="`pwd`/../scripts/wasi-filter-cc $$cxx"; \
+	fi && \
 	test ! -d $$name || \
-	$(MAKE) -C $$name/$$makedir -f $$makefile clean TARGET=$$target $(BUILD_FLAGS) $(QUIET)
+	$(MAKE) -C $$name/$$makedir -f $$makefile clean TARGET=$$target \
+		HAVE_OPENGL=0 STATIC_LINKING=1 AR="$$ar" RANLIB="$$ranlib" \
+		platform=$$platform CC="$$cc" CXX="$$cxx" \
+		$$flag_args $$extra_flags $(QUIET)
 
 .PHONY: emsdk

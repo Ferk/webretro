@@ -1,4 +1,4 @@
-TARGET  := junie
+TARGET  := webretro
 VERSION := 0.7.1-$(shell date +%s)
 
 ifeq ($(DEBUG), 1)
@@ -26,11 +26,27 @@ else
 UI_FLAGS += --command "$(MAKE) -C ../$(APP_DIR) DEBUG=$(DEBUG)"
 endif
 
-.PHONY: deps cores app ui
+.PHONY: deps cores app ui pages
 
 # Build
 
-all: clean prepare deps cores app ui
+all:
+	@$(MAKE) clean
+	@$(MAKE) prepare
+	@$(MAKE) deps
+	@$(MAKE) cores
+	@$(MAKE) app
+	@$(MAKE) ui
+
+pages: all
+	@echo Preparing static site...
+	@rm -rf dist
+	@mkdir -p dist
+	@cp -a $(UI_DIR)/$(OUT_DIR)/. dist/
+	@rm -rf dist/games
+	@mkdir -p dist/games
+	@test ! -d games || cp -a games/. dist/games/
+	@touch dist/.nojekyll
 
 deps:
 	@$(MAKE) -C $(DEPS_DIR)
@@ -54,7 +70,7 @@ watch: clean prepare deps cores
 # Common
 
 prepare:
-	@echo Fetching dependencies...
+	@echo Installing UI dependencies...
 	@yarn --cwd $(UI_DIR) install $(QUIET)
 
 # Pack

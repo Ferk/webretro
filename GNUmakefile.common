@@ -1,16 +1,21 @@
 WASI_SDK   := $(shell pwd)/../deps/wasi-sdk
-EMSCRIPTEN := $(shell pwd)/../deps/emsdk/upstream/emscripten
+EMSCRIPTEN ?= $(shell dirname "$$(command -v emcc)")
 LIBRETRO   := $(shell pwd)/../deps/libretro-common
+
+ifeq ($(EMSCRIPTEN),.)
+$(error emcc was not found. Install/activate emsdk or pass EMSCRIPTEN=/path/to/emscripten)
+endif
 
 MAKEFLAGS += --no-print-directory
 QUIET := > /dev/null 2>&1
 
 DEFINES += \
 	--sysroot=$(WASI_SDK)/share/wasi-sysroot \
-	--target=wasm32-wasi-threads -pthread \
+	--target=wasm32-wasi-threads -pthread -D_WASI_EMULATED_MMAN -mllvm -wasm-enable-sjlj \
 	-I$(EMSCRIPTEN)/cache/sysroot/include/c++/v1 \
 	-I$(EMSCRIPTEN)/cache/sysroot/include/compat \
-	-I$(EMSCRIPTEN)/cache/sysroot/include
+	-I$(EMSCRIPTEN)/cache/sysroot/include \
+	-I$(shell pwd)/../deps/zlib
 
 ifeq ($(DEBUG), 1)
 DEFINES += -O0 -ferror-limit=0 -DDEBUG

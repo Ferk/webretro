@@ -14,6 +14,7 @@ DEFINES := \
 
 LDFLAGS := \
 	-lwasi-emulated-mman -fwasm-exceptions \
+	-lsetjmp \
 	-mexec-model=reactor -Wl,--no-entry \
 	-Wl,--export=calloc,--export=free \
 	-Wl,--initial-memory=$$((200 * 1024 * 1024)) \
@@ -36,7 +37,14 @@ prepare:
 
 $(OUT_DIR)/%.wasm:
 	@echo Building $*.wasm...
-	@$(CXX) -o $(OUT_DIR)/$*.wasm $(OBJ) $(DEPS) $(CORES_DIR)/lib$*.a $(LDFLAGS) $(EXPORTS) $(QUIET)
+	@extras=`jq -r '."$*".linkArchives[]? // empty' $(CORES_DIR)/cores.json | sed 's#^#$(CORES_DIR)/#'` && \
+	link_flags=`jq -r '."$*".linkFlags[]? // empty' $(CORES_DIR)/cores.json` && \
+	core_archive="$(CORES_DIR)/lib$*.a" && \
+	if test "`jq -r '."$*".wholeArchive // false' $(CORES_DIR)/cores.json`" = true; then \
+		core_archive="-Wl,--whole-archive $$core_archive -Wl,--no-whole-archive"; \
+	fi && \
+	$(CXX) -o $(OUT_DIR)/$*.wasm $(OBJ) $(DEPS) $$core_archive $$extras \
+		$(LDFLAGS) $$link_flags $(EXPORTS) $(QUIET)
 
 clean:
 	@rm -rf $(OBJ) $(OUT_DIR)

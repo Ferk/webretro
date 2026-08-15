@@ -2,11 +2,12 @@
 /games
 /data
 /build
+/dist
 
-deps/*/
+deps/wasi-sdk
 deps/*.a
-cores/*/
 cores/*.a
+cores/*-libs/
 
 app/build
 app/sources/*.o

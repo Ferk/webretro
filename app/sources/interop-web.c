@@ -1,5 +1,7 @@
 #include "interop.h"
 
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define IMPORT(name) __attribute__((import_module("env"), import_name(#name))) name
@@ -52,6 +54,30 @@ void JunieInteropVariables(const JunieVariable *variables)
 	web_variables(variables);
 }
 
+int siprintf(char *str, const char *format, ...)
+{
+	va_list args;
+	int result;
+
+	va_start(args, format);
+	result = vsprintf(str, format, args);
+	va_end(args);
+
+	return result;
+}
+
+int fiprintf(FILE *stream, const char *format, ...)
+{
+	va_list args;
+	int result;
+
+	va_start(args, format);
+	result = vfprintf(stream, format, args);
+	va_end(args);
+
+	return result;
+}
+
 
 // socket.h
 
@@ -78,6 +104,13 @@ int pthread_attr_setschedparam(pthread_attr_t *attr, const struct sched_param *p
 
 int setjmp(jmp_buf env) { return 0; }
 void longjmp(jmp_buf env, int val) { abort(); }
+
+
+// time.h
+
+#include <time.h>
+
+clock_t clock(void) { return 0; }
 
 
 // mman.h

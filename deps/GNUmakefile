@@ -24,10 +24,10 @@ else
     $(error Unsupported OS: $(UNAME_S))
 endif
 
-DEFINES := -I$(DEPS_DIR)/libretro-common/include
+DEFINES := -D__EMSCRIPTEN__ -I$(DEPS_DIR)/libretro-common/include
 include ../GNUmakefile.common
 
-all: wasi-sdk emsdk zlib libretro-common libz.a libretro.a
+all: wasi-sdk zlib libretro-common libz.a libretro.a
 
 wasi-sdk:
 	@echo Fetching wasi-sdk...
@@ -35,18 +35,23 @@ wasi-sdk:
 	@mkdir wasi-sdk && tar xvf $(WASI_BUILD).tar.gz -C wasi-sdk --strip-components 1 $(QUIET)
 	@rm $(WASI_BUILD).tar.gz
 
-emsdk:
-	@echo Fetching emscripten...
-	@git -C emsdk pull $(QUIET) || git clone --recurse https://github.com/emscripten-core/emsdk.git $(QUIET)
-	@cd emsdk && ./emsdk install latest $(QUIET) && ./emsdk activate latest $(QUIET)
-
 libretro-common:
-	@echo Fetching libretro-common...
-	@git -C libretro-common pull $(QUIET) || git clone --recurse https://github.com/libretro/libretro-common.git $(QUIET)
+	@if test -d libretro-common; then \
+		echo Using vendored libretro-common...; \
+	else \
+		echo "Missing dependency source: deps/libretro-common" >&2; \
+		echo "Run git submodule update --init --recursive." >&2; \
+		exit 1; \
+	fi
 
 zlib:
-	@echo Fetching zlib...
-	@git -C zlib pull $(QUIET) || git clone --recurse https://github.com/madler/zlib.git $(QUIET)
+	@if test -d zlib; then \
+		echo Using vendored zlib...; \
+	else \
+		echo "Missing dependency source: deps/zlib" >&2; \
+		echo "Run git submodule update --init --recursive." >&2; \
+		exit 1; \
+	fi
 
 OBJ = \
 	libretro-common/file/file_path.o \
@@ -63,6 +68,8 @@ OBJ = \
 	libretro-common/features/features_cpu.o \
 	libretro-common/audio/conversion/float_to_s16.o \
 	libretro-common/audio/conversion/s16_to_float.o \
+	libretro-common/encodings/encoding_crc32.o \
+	libretro-common/encodings/encoding_deflate.o \
 	libretro-common/audio/resampler/audio_resampler.o \
 	libretro-common/audio/resampler/drivers/sinc_resampler.o
 

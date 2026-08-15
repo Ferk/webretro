@@ -10,22 +10,22 @@
 		"repository": "gambatte-libretro",
 		"systems": ["Game Boy", "Game Boy Color"]
 	},
-	"vbam": {
-		"name": "VBA-M",
-		"repository": "vbam-libretro",
-		"directory": "src/libretro",
+	"mgba": {
+		"name": "mGBA",
+		"repository": "mgba",
+		"cmake": true,
 		"systems": ["Game Boy Advance"]
 	},
 	"desmume": {
 		"name": "DeSmuME",
-		"owner": "Namaneo",
-		"branch": "advsc_has-database",
+		"repository": "desmume",
 		"directory": "desmume/src/frontend/libretro",
 		"systems": ["Nintendo DS"]
 	},
-	"nestopia": {
-		"name": "Nestopia",
-		"directory": "libretro",
+	"mesen": {
+		"name": "Mesen",
+		"repository": "Mesen",
+		"directory": "Libretro",
 		"systems": ["NES"]
 	},
 	"snes9x": {
@@ -43,11 +43,33 @@
 		"name": "PCSX-ReARMed",
 		"repository": "pcsx_rearmed",
 		"makefile": "Makefile.libretro",
+		"stripEmccSettings": true,
+		"buildFlags": ["USE_MINIZ=1", "BUILTIN_GPU=peops"],
 		"systems": ["PlayStation"]
 	},
 	"parallel": {
 		"name": "ParaLLEl N64",
 		"repository": "parallel-n64",
+		"useEmscripten": true,
 		"systems": ["Nintendo 64"]
+	},
+	"retro8": {
+		"name": "Retro8",
+		"repository": "retro8",
+		"systems": ["PICO-8"]
+	},
+	"tic80": {
+		"name": "TIC-80",
+		"repository": "TIC-80",
+		"directory": "core",
+		"cmake": true,
+		"systems": ["TIC-80"],
+		"linkArchives": [
+			"tic80-libs/libtic80core.a",
+			"tic80-libs/libpng.a",
+			"tic80-libs/libzlib.a",
+			"tic80-libs/libgiflib.a",
+			"tic80-libs/libblipbuf.a"
+		]
 	}
 }

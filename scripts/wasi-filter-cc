@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ ${1:-} == -* ]]; then
+	compiler=${WASI_FILTER_CC_COMPILER:-clang}
+else
+	compiler=$1
+	shift
+fi
+
+args=()
+for arg in "$@"; do
+	case "$arg" in
+		-sUSE_ZLIB=1)
+			;;
+		*)
+			args+=("$arg")
+			;;
+	esac
+done
+
+exec "$compiler" "${args[@]}"

@@ -1,0 +1,41 @@
+[submodule "deps/libretro-common"]
+	path = deps/libretro-common
+	url = https://github.com/libretro/libretro-common.git
+[submodule "cores/libretro-2048"]
+	path = cores/libretro-2048
+	url = https://github.com/libretro/libretro-2048.git
+[submodule "deps/zlib"]
+	path = deps/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "cores/gambatte-libretro"]
+	path = cores/gambatte-libretro
+	url = https://github.com/libretro/gambatte-libretro.git
+[submodule "cores/mgba"]
+	path = cores/mgba
+	url = https://github.com/libretro/mgba.git
+[submodule "cores/Mesen"]
+	path = cores/Mesen
+	url = https://github.com/libretro/Mesen.git
+[submodule "cores/retro8"]
+	path = cores/retro8
+	url = https://github.com/libretro/retro8.git
+[submodule "cores/snes9x"]
+	path = cores/snes9x
+	url = https://github.com/libretro/snes9x.git
+[submodule "cores/TIC-80"]
+	path = cores/TIC-80
+	url = https://github.com/libretro/TIC-80.git
+[submodule "cores/Genesis-Plus-GX"]
+	path = cores/Genesis-Plus-GX
+	url = https://github.com/libretro/Genesis-Plus-GX.git
+[submodule "cores/pcsx_rearmed"]
+	path = cores/pcsx_rearmed
+	url = https://github.com/libretro/pcsx_rearmed.git
+[submodule "cores/desmume"]
+	path = cores/desmume
+	url = https://github.com/Namaneo/desmume.git
+	branch = advsc_has-database
+[submodule "cores/parallel-n64"]
+	path = cores/parallel-n64
+	url = https://github.com/libretro/parallel-n64.git
+	branch = master

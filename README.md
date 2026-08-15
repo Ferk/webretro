@@ -1,8 +1,8 @@
 <p align="center"><img src="ui/assets/icon-round.png" width="150" /></p>
 
-# <p align="center">Junie</p>
+# <p align="center">WebRetro</p>
 
-Junie is a libretro frontend that aims to run entirely in your browser, desktop or mobile!
+WebRetro is a fork of [Junie](https://github.com/Namaneo/Junie), a libretro frontend that aims to run entirely in your browser, desktop or mobile.
 * No installation on the end-devices.
 * Near-native performances thanks to WebAssembly.
 * Wide range of supported/compatible cores (... soon).
@@ -10,9 +10,7 @@ Junie is a libretro frontend that aims to run entirely in your browser, desktop 
 
 Junie currently runs on most recent browsers, but your experience will probably be better on Chrome and Safari.
 
-[Try it here!](https://namaneo.github.io/Junie/)
-
-***Disclaimer**: development is still in progress. I'll try my best not to break anything between releases (especially regarding local save files), but it's probably a good idea for you to backup your saves before each update.*
+***Disclaimer**: development is still in progress. Back up local saves before updates.*
 
 # Supported features
 
@@ -48,9 +46,11 @@ games
 
 ## Build
 
-Install the following dependencies: **yarn**, **make** and **zip**, and build the application:
+Install the following dependencies: **Emscripten**, **yarn**, **make**, **jq**, **wget** and **zip**, then build the application:
 ```bash
+git submodule update --init --recursive
 make       # Build cores, libraries and the application
+make pages # Same as `make`, but also outputs a static site in dist/
 make pack  # Same as `make`, but also outputs binaries in a zip file
 make watch # Same as `make`, but also rebuild on source file changes
 
@@ -60,18 +60,17 @@ make watch # Same as `make`, but also rebuild on source file changes
 # * QUIET=    : enable verbose build mode
 ```
 
-## Docker
-
-If you prefer to use Docker, no need for any local dependencies:
+`emsdk` is not vendored. Activate it before building, or pass the Emscripten path explicitly:
 
 ```bash
-docker run \
-    -d --rm \
-    --name junie \
-    -p 8000:8000 \
-    -v /path/to/games:/junie/games \
-    namaneo/junie
+EMSCRIPTEN=/path/to/emsdk/upstream/emscripten make pages
 ```
+
+## Cores
+
+`cores/cores.json` should contain only cores that are actually present as submodules under `cores/`.
+
+To add another core later, add the submodule and then add its metadata back to `cores/cores.json`.
 
 # Credits
 
