@@ -35,7 +35,3 @@
 	path = cores/desmume
 	url = https://github.com/Namaneo/desmume.git
 	branch = advsc_has-database
-[submodule "cores/parallel-n64"]
-	path = cores/parallel-n64
-	url = https://github.com/libretro/parallel-n64.git
-	branch = master

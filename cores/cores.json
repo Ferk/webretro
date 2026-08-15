@@ -47,12 +47,6 @@
 		"buildFlags": ["USE_MINIZ=1", "BUILTIN_GPU=peops"],
 		"systems": ["PlayStation"]
 	},
-	"parallel": {
-		"name": "ParaLLEl N64",
-		"repository": "parallel-n64",
-		"useEmscripten": true,
-		"systems": ["Nintendo 64"]
-	},
 	"retro8": {
 		"name": "Retro8",
 		"repository": "retro8",
