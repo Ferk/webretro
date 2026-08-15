@@ -4,6 +4,10 @@ DEFINES := -D__EMSCRIPTEN__
 include ../GNUmakefile.common
 
 BUILD_JOBS := -j 8
+ifeq ($(GITHUB_ACTIONS),true)
+BUILD_JOBS := -j 1
+QUIET :=
+endif
 BUILD_FLAGS := \
 	$(BUILD_JOBS) platform=emscripten HAVE_OPENGL=0 STATIC_LINKING=1 \
 	CC="$(CC)" CXX="$(CXX)" AR="$(AR)" RANLIB="$(RANLIB)"

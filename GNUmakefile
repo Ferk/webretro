@@ -14,6 +14,9 @@ UI_DIR    := ui
 OUT_DIR   := build
 
 QUIET := > /dev/null 2>&1
+ifeq ($(GITHUB_ACTIONS),true)
+QUIET :=
+endif
 MAKEFLAGS += --no-print-directory
 
 UI_FLAGS := --version $(VERSION)
