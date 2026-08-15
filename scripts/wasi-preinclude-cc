@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+preinclude=$1
+shift
+preinclude_files=$1
+shift
+compiler=$1
+shift
+
+needs_preinclude=false
+for arg do
+	old_ifs=$IFS
+	IFS=:
+	for pattern in $preinclude_files; do
+		case "$arg" in
+			$pattern)
+				needs_preinclude=true
+				break
+				;;
+		esac
+	done
+	IFS=$old_ifs
+	if "$needs_preinclude"; then
+		break
+	fi
+done
+
+if "$needs_preinclude"; then
+	exec "$compiler" -include "$preinclude" "$@"
+fi
+
+exec "$compiler" "$@"

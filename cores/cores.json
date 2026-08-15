@@ -20,6 +20,8 @@
 		"name": "DeSmuME",
 		"repository": "desmume",
 		"directory": "desmume/src/frontend/libretro",
+		"preinclude": "../../../../../desmume-wasi-compat.h",
+		"preincludeFiles": ["*/wifi.cpp", "wifi.cpp", "*/rthreads.c", "rthreads.c"],
 		"systems": ["Nintendo DS"]
 	},
 	"mesen": {

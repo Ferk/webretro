@@ -33,6 +33,8 @@ lib%.a: fetch-%
 	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
 	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
 	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
+	preinclude=`jq -r '."$*".preinclude // ""' cores.json` && \
+	preinclude_files=`jq -r '."$*".preincludeFiles? // ["*"] | join(":")' cores.json` && \
 	flag_args= && \
 	if test -n "$$c_flags"; then flag_args="$$flag_args CFLAGS=$$c_flags"; fi && \
 	if test -n "$$cxx_flags"; then flag_args="$$flag_args CXXFLAGS=$$cxx_flags"; fi && \
@@ -49,6 +51,10 @@ lib%.a: fetch-%
 	if test "`jq -r '."$*".stripEmccSettings // false' cores.json`" = true; then \
 		cc="`pwd`/../scripts/wasi-filter-cc $$cc"; \
 		cxx="`pwd`/../scripts/wasi-filter-cc $$cxx"; \
+	fi && \
+	if test -n "$$preinclude"; then \
+		cc="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cc"; \
+		cxx="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cxx"; \
 	fi && \
 	echo Building lib$*.a... && \
 	if test "$$cmake" = true; then \
@@ -82,7 +88,7 @@ lib%.a: fetch-%
 		cmake --build $$builddir --target $*_libretro --parallel 8 $(QUIET) && \
 		rm -rf `pwd`/$*-libs && \
 		mkdir -p `pwd`/$*-libs && \
-		find $$builddir/lib -name "*.a" -exec cp -f {} `pwd`/$*-libs/ \; && \
+		test ! -d $$builddir/lib || find $$builddir/lib -name "*.a" -exec cp -f {} `pwd`/$*-libs/ \; && \
 		find $$builddir -name "$*_libretro*.a" -print -quit | xargs -r cp -f -t `pwd` && \
 		cp -f `pwd`/$*_libretro*.a $$target; \
 	else \
@@ -102,6 +108,8 @@ clean-%:
 	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
 	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
 	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
+	preinclude=`jq -r '."$*".preinclude // ""' cores.json` && \
+	preinclude_files=`jq -r '."$*".preincludeFiles? // ["*"] | join(":")' cores.json` && \
 	flag_args= && \
 	if test -n "$$c_flags"; then flag_args="$$flag_args CFLAGS=$$c_flags"; fi && \
 	if test -n "$$cxx_flags"; then flag_args="$$flag_args CXXFLAGS=$$cxx_flags"; fi && \
@@ -118,6 +126,10 @@ clean-%:
 	if test "`jq -r '."$*".stripEmccSettings // false' cores.json`" = true; then \
 		cc="`pwd`/../scripts/wasi-filter-cc $$cc"; \
 		cxx="`pwd`/../scripts/wasi-filter-cc $$cxx"; \
+	fi && \
+	if test -n "$$preinclude"; then \
+		cc="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cc"; \
+		cxx="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cxx"; \
 	fi && \
 	test ! -d $$name || \
 	$(MAKE) -C $$name/$$makedir -f $$makefile clean TARGET=$$target \
