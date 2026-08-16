@@ -61,6 +61,8 @@
 		"repository": "TIC-80",
 		"directory": "core",
 		"cmake": true,
+		"defineEmscripten": false,
+		"cFlags": "-DMA_3DS",
 		"systems": ["TIC-80"],
 		"linkArchives": [
 			"tic80-libs/libtic80core.a",

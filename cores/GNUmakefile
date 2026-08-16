@@ -34,14 +34,16 @@ lib%.a: fetch-%
 	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
 	cmake=`jq -r '."$*".cmake // false' cores.json` && \
 	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
+	cmake_c_flags='$(DEFINES)' && \
+	cmake_cxx_flags='$(DEFINES)' && \
 	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
 	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
 	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
 	preinclude=`jq -r '."$*".preinclude // ""' cores.json` && \
 	preinclude_files=`jq -r '."$*".preincludeFiles? // ["*"] | join(":")' cores.json` && \
 	flag_args= && \
-	if test -n "$$c_flags"; then flag_args="$$flag_args CFLAGS=$$c_flags"; fi && \
-	if test -n "$$cxx_flags"; then flag_args="$$flag_args CXXFLAGS=$$cxx_flags"; fi && \
+	if test -n "$$c_flags"; then flag_args="$$flag_args CFLAGS=$$c_flags"; cmake_c_flags="$$cmake_c_flags $$c_flags"; fi && \
+	if test -n "$$cxx_flags"; then flag_args="$$flag_args CXXFLAGS=$$cxx_flags"; cmake_cxx_flags="$$cmake_cxx_flags $$cxx_flags"; fi && \
 	cc='$(CC)' && \
 	cxx='$(CXX)' && \
 	ar='$(AR)' && \
@@ -51,6 +53,10 @@ lib%.a: fetch-%
 		cxx=`command -v em++`; \
 		ar=`command -v emar`; \
 		ranlib=`command -v emranlib`; \
+	fi && \
+	if test "`jq -r '."$*" | if has("defineEmscripten") then .defineEmscripten else true end' cores.json`" != true; then \
+		cmake_c_flags=`printf '%s\n' "$$cmake_c_flags" | sed 's/-D__EMSCRIPTEN__//g'`; \
+		cmake_cxx_flags=`printf '%s\n' "$$cmake_cxx_flags" | sed 's/-D__EMSCRIPTEN__//g'`; \
 	fi && \
 	if test "`jq -r '."$*".stripEmccSettings // false' cores.json`" = true; then \
 		cc="`pwd`/../scripts/wasi-filter-cc $$cc"; \
@@ -71,8 +77,8 @@ lib%.a: fetch-%
 			-DCMAKE_CXX_COMPILER="$(WASI_SDK)/bin/clang++" \
 			-DCMAKE_AR="$(AR)" \
 			-DCMAKE_RANLIB="$(RANLIB)" \
-			-DCMAKE_C_FLAGS="$(DEFINES)" \
-			-DCMAKE_CXX_FLAGS="$(DEFINES)" \
+			-DCMAKE_C_FLAGS="$$cmake_c_flags" \
+			-DCMAKE_CXX_FLAGS="$$cmake_cxx_flags" \
 			-DBUILD_LIBRETRO=ON \
 			-DLIBRETRO_STATIC=ON \
 			-DSKIP_LIBRARY=ON \
