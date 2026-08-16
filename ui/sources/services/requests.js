@@ -74,21 +74,32 @@ export default class Requests {
 	 */
 	static async readStream(stream, length, progress) {
 		try {
-			const buffer = new Uint8Array(length);
-
-			let offset = 0
+			length = Number(length);
+			const total = Number.isFinite(length) && length > 0 ? length : null;
+			const chunks = [];
+			let offset = 0;
 			const reader = stream.getReader();
+
 			await reader.read().then(function process({ done, value }) {
 				if (done) return;
 
-				buffer.set(value, offset);
+				chunks.push(value);
 				offset += value.length;
 
-				progress(offset / length);
+				if (total)
+					progress(Math.min(offset / total, 1));
 
 				return reader.read().then(process);
 			});
 
+			const buffer = new Uint8Array(offset);
+			let cursor = 0;
+			for (const chunk of chunks) {
+				buffer.set(chunk, cursor);
+				cursor += chunk.length;
+			}
+
+			progress(1);
 			return buffer;
 
 		} catch (e) {

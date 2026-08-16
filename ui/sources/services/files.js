@@ -57,6 +57,9 @@ export default class Files {
 		if (size < 0)
 			return null;
 
+		if (typeof SharedArrayBuffer == 'undefined')
+			return await fs.readFile(path);
+
 		const buffer = new Uint8Array(new SharedArrayBuffer(size));
 		await fs.read(path, buffer, 0);
 

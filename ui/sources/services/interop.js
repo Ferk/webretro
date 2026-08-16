@@ -109,7 +109,16 @@ export default class Interop {
 	#wrap(name, type, types) {
 		this[name] = (...parameters) => {
 			parameters = parameters.map((parameter, i) => Interop.serialize(this.#instance, types[i], parameter));
-			const result = this.#instance.exports[`Junie${name}`](...parameters);
+			const exportName = `Junie${name}`;
+			const fn = this.#instance.exports[exportName];
+			if (typeof fn != 'function') {
+				const available = Object.keys(this.#instance.exports)
+					.filter(name => name.startsWith('Junie'))
+					.sort()
+					.join(', ');
+				throw new Error(`Missing wasm export ${exportName}. Available Junie exports: ${available}`);
+			}
+			const result = fn(...parameters);
 			parameters.forEach((parameter, i) => Interop.free(this.#instance, types[i], parameter));
 
 			return Interop.deserialize(this.#instance, type, result);

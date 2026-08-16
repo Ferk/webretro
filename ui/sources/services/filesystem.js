@@ -125,6 +125,20 @@ export default class Filesystem {
 
 	/**
 	 * @param {string} path
+	 * @returns {Uint8Array | Promise<Uint8Array>}
+	 */
+	async readFile(path) {
+		const size = await this.size(path);
+		if (size < 0)
+			return null;
+
+		const buffer = new Uint8Array(size);
+		await this.read(path, buffer, 0);
+		return buffer;
+	}
+
+	/**
+	 * @param {string} path
 	 * @param {Uint8Array} buffer
 	 * @param {number} offset
 	 * @returns {number | Promise<number>}

@@ -6,21 +6,62 @@ export function instrumentContext(context) {
 	const TYPE_STRING = 2;
 	const TYPE_OBJECT = 3;
 	const TYPE_ERROR  = 4;
+	const RESPONSE = '-parallel-response-';
+	const BUFFER_HEADER_SIZE = 12;
+
+	const transferable = (obj) => {
+		const instance = ArrayBuffer.isView(obj) ? obj.buffer : obj;
+		const types = [MessagePort, globalThis.OffscreenCanvas, ArrayBuffer].filter(Boolean);
+		if (types.map(type => type.name).includes(instance?.constructor.name))
+			return instance;
+		return null;
+	};
 
 	context['-ready-'] = () => { return 0; };
 	context['-port-'] = (port) => { port.onmessage = onmessage; return 0; };
 
 	return async (message) => {
-		const sab = message.data.args.shift();
 		const name = message.data.name;
 		const args = message.data.args;
+		const sync = message.data.sync;
+		const id = message.data.id;
+		const sab = sync ? args.shift() : null;
 
 		let result = null;
+		let is_error = false;
 		try {
 			result = await context[name](...args);
 		} catch(e) {
 			result = e;
+			is_error = true;
 		}
+
+		if (!sync) {
+			const target = message.currentTarget || self;
+			const response = {
+				type: RESPONSE,
+				id,
+				result: is_error ? { name: result.name, message: result.message, stack: result.stack } : result,
+				error: is_error,
+			};
+			const transfer = transferable(result);
+			target.postMessage(response, transfer ? [transfer] : []);
+			return;
+		}
+
+		const write = (type, encoded) => {
+			if (sab.buffer.byteLength < BUFFER_HEADER_SIZE + encoded.byteLength) {
+				type = TYPE_ERROR;
+				encoded = new TextEncoder().encode(JSON.stringify({
+					name: 'Error',
+					message: 'Synchronous worker response is too large',
+				}));
+			}
+
+			Atomics.store(sab, 1, type);
+			Atomics.store(sab, 2, encoded.byteLength);
+			new Uint8Array(sab.buffer).set(encoded, BUFFER_HEADER_SIZE);
+		};
 
 		switch (typeof result) {
 			case 'number':
@@ -29,25 +70,14 @@ export function instrumentContext(context) {
 				break;
 			case 'string':
 				const encoded_str = new TextEncoder().encode(result);
-				if (sab.buffer.byteLength < 12 + encoded_str.byteLength)
-					sab.buffer.grow(12 + encoded_str.byteLength);
-
-				Atomics.store(sab, 1, TYPE_STRING);
-				Atomics.store(sab, 2, encoded_str.byteLength);
-				new Uint8Array(sab.buffer).set(encoded_str, 12);
+				write(TYPE_STRING, encoded_str);
 				break;
 			case 'object':
-				const is_error = result?.constructor.name.endsWith('Error');
 				const stringified = JSON.stringify(is_error
 					? { name: result.name, message: result.message, stack: result.stack }
 					: result);
 				const encoded_obj = new TextEncoder().encode(stringified);
-				if (sab.buffer.byteLength < 12 + encoded_obj.byteLength)
-					sab.buffer.grow(12 + encoded_obj.byteLength);
-
-				Atomics.store(sab, 1, is_error ? TYPE_ERROR : TYPE_OBJECT);
-				Atomics.store(sab, 2, encoded_obj.byteLength);
-				new Uint8Array(sab.buffer).set(encoded_obj, 12);
+				write(is_error ? TYPE_ERROR : TYPE_OBJECT, encoded_obj);
 				break;
 		}
 
@@ -89,6 +119,8 @@ export function parseMessage(sab) {
  * @template T
  */
 export default class Parallel {
+	static #BUFFER_SIZE = 50 * 1024;
+
 	/** @type {new() => T} */
 	#cls = null;
 
@@ -106,6 +138,14 @@ export default class Parallel {
 
 	/** @type {Int32Array[]} */
 	#buffers = [];
+
+	/** @type {number} */
+	#next_id = 1;
+
+	/** @type {{ [id: number]: { resolve: (value: any) => void, reject: (error: Error) => void } }} */
+	#pending = {};
+
+	static #RESPONSE = '-parallel-response-';
 
 	/**
 	 * @param {new() => T} cls
@@ -141,7 +181,7 @@ export default class Parallel {
 
 		const blob = new Blob([script], { type: 'text/javascript' });
 		this.#worker = new Worker(URL.createObjectURL(blob), { name });
-		this.#worker.onmessage = this.#handler;
+		this.#worker.onmessage = (event) => this.#message(event);
 		await this.#call('-ready-', [], false);
 		return this.#proxy;
 	}
@@ -152,7 +192,7 @@ export default class Parallel {
 	 */
 	link(port) {
 		this.#worker = port;
-		this.#worker.onmessage = this.#handler;
+		this.#worker.onmessage = (event) => this.#message(event);
 		return this.#proxy;
 	}
 
@@ -195,10 +235,37 @@ export default class Parallel {
 	 */
 	#transferable(obj) {
 		const instance = ArrayBuffer.isView(obj) ? obj.buffer : obj;
-		const types = [MessagePort, OffscreenCanvas, ArrayBuffer];
+		const types = [MessagePort, globalThis.OffscreenCanvas, ArrayBuffer].filter(Boolean);
 		if (types.map(type => type.name).includes(instance?.constructor.name))
 			return instance;
 		return null;
+	}
+
+	/**
+	 * @param {MessageEvent} event
+	 * @returns {void}
+	 */
+	#message(event) {
+		if (event.data?.type == Parallel.#RESPONSE) {
+			const pending = this.#pending[event.data.id];
+			delete this.#pending[event.data.id];
+
+			if (!pending)
+				return;
+
+			if (event.data.error) {
+				const error = new Error(event.data.result.message);
+				error.name = event.data.result.name;
+				error.stack = event.data.result.stack;
+				pending.reject(error);
+				return;
+			}
+
+			pending.resolve(event.data.result);
+			return;
+		}
+
+		this.#handler?.(event);
 	}
 
 	/**
@@ -210,18 +277,28 @@ export default class Parallel {
 	#call(name, args, sync) {
 		if (!args) args = [];
 
+		const transfer = args.map(arg => this.#transferable(arg)).filter(Boolean);
+
+		if (!sync) {
+			const id = this.#next_id++;
+			const promise = new Promise((resolve, reject) => {
+				this.#pending[id] = { resolve, reject };
+			});
+			this.#worker.postMessage({ id, name, args, sync }, transfer);
+			return promise;
+		}
+
+		if (typeof SharedArrayBuffer == 'undefined')
+			throw new Error('SharedArrayBuffer is unavailable. Reload after the service worker is active, or serve WebRetro with COOP/COEP headers.');
+
 		const sab = this.#buffers.length == 0
-			? new Int32Array(new SharedArrayBuffer(12, { maxByteLength: 50 * 1024 }))
+			? new Int32Array(new SharedArrayBuffer(Parallel.#BUFFER_SIZE))
 			: this.#buffers.pop().fill(0);
 
-		const message = { name, args: [sab, ...args] };
-		const transfer = args.map(arg => this.#transferable(arg)).filter(Boolean);
+		const message = { name, args: [sab, ...args], sync };
 		this.#worker.postMessage(message, transfer);
 
-		if (sync)
-			Atomics.wait(sab, 0, 0);
-
-		const wait = sync ? { async: false } : Atomics.waitAsync(sab, 0, 0);
+		Atomics.wait(sab, 0, 0);
 
 		const parse = () => {
 			const result = parseMessage(sab);
@@ -229,6 +306,6 @@ export default class Parallel {
 			return result;
 		};
 
-		return wait.async ? wait.value.then(() => parse()) : parse();
+		return parse();
 	}
 }

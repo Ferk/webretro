@@ -35,7 +35,7 @@ all: clean prepare
 prepare:
 	@mkdir -p $(OUT_DIR)
 
-$(OUT_DIR)/%.wasm:
+$(OUT_DIR)/%.wasm: $(OBJ) $(DEPS) $(CORES_DIR)/lib%.a exports.txt
 	@echo Building $*.wasm...
 	@extras=`jq -r '."$*".linkArchives[]? // empty' $(CORES_DIR)/cores.json | sed 's#^#$(CORES_DIR)/#'` && \
 	link_flags=`jq -r '."$*".linkFlags[]? // empty' $(CORES_DIR)/cores.json` && \

@@ -124,10 +124,20 @@ export const GamesModal = ({ system, close }) => {
 	const download = async (game) => {
 		setStatus({ game: game.rom, progress: 0 });
 
-		const systemPath = encodeURIComponent(system.name);
-		const romPath = game.rom.split('/').map(encodeURIComponent).join('/');
-		const response = await fetch(`games/${systemPath}/${romPath}`);
-		await read(games, game.rom, response.body, response.headers.get('Content-Length'));
+		try {
+			const systemPath = encodeURIComponent(system.name);
+			const romPath = game.rom.split('/').map(encodeURIComponent).join('/');
+			const response = await fetch(`games/${systemPath}/${romPath}`);
+			if (!response.ok)
+				throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+			if (!response.body)
+				throw new Error('Download failed: response has no body');
+
+			await read(games, game.rom, response.body, response.headers.get('Content-Length'));
+		} catch (error) {
+			console.error(error);
+			alert({ header: 'Install failed', message: error.message ?? game.rom, buttons: [ 'OK' ] });
+		}
 
 		setStatus({ game: null, progress: 0 });
 		await update();
