@@ -1,0 +1,11 @@
+<game>
+  <title>µCity Advance</title>
+  <platform>Gameboy Color</platform>
+  <genre>Puzzle</genre>
+  <developer>Antonio Niño Díaz</developer>
+  <plot>A puzzle game for GB and GBC.</plot>
+  <version>ec2138bc0a</version>
+  <license>GPL-3.0</license>
+  <website>https://codeberg.org/SkyLyrac/geometrix</website>
+  <trailer>https://www.youtube.com/watch?v=qAvW2n8Qbeg</trailer>
+</game>

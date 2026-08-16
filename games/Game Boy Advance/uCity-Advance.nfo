@@ -1,0 +1,11 @@
+<game>
+  <title>µCity Advance</title>
+  <platform>Gameboy Advance</platform>
+  <genre>Strategy</genre>
+  <developer>Antonio Niño Díaz</developer>
+  <plot>Open-source city-building game for Game Boy Advance.</plot>
+  <version>1.0.3</version>
+  <license>GPL-3.0</license>
+  <website>https://github.com/AntonioND/ucity-advance</website>
+  <trailer>https://www.youtube.com/watch?v=xYQfRM_zih0</trailer>
+</game>

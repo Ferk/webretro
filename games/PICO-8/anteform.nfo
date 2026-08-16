@@ -1,0 +1,10 @@
+<game>
+    <title>Anteform</title>
+    <platform>PICO-8</platform>
+    <genre>RPG / Detective</genre>
+    <developer>Feneric</developer>
+    <plot>8-bit weird detective RPG inspired by Ultima featuring investigation, overworld travel, NPC conversations, and 3D dungeon exploration.</plot>
+    <version>1.0</version>
+    <license>GPL-3.0-only</license>
+    <website>https://github.com/Feneric/Anteform</website>
+</game>

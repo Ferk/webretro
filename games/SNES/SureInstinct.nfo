@@ -1,0 +1,15 @@
+<game>
+  <title>Sure Instinct</title>
+  <platform>SNES</platform>
+  <genre>Puzzle</genre>
+  <developer>Benjamin Schulte</developer>
+  <plot>
+  Sure Instinct is a skill based puzzle-game. Steer a ball through challenging maps to the goal of each stage.
+By changing the perspective, you can reach objects on two different sides of each map. Avoid falling down into the abyss or to lose your health on dangerous objects. Collect items to reach new sections or to find hidden paths.
+
+Can you find the way to the goal, beat the high score or find the fastest path through the stages?
+  </plot>
+  <version>90d70d4.NTSC</version>
+  <license>MIT</license>
+  <website>https://github.com/BenjaminSchulte/SureInstinct</website>
+</game>

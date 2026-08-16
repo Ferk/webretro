@@ -1,0 +1,10 @@
+<game>
+  <title>Apotris</title>
+  <platform>Gameboy Advance</platform>
+  <year>1985</year>
+  <genre>Puzzle</genre>
+  <developer>akouzoukos</developer>
+  <plot>A free and multiplatform block stacking game</plot>
+  <version>4.1.0</version>
+  <license>GPL-3.0</license>
+</game>

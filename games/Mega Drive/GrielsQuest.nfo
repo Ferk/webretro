@@ -1,0 +1,10 @@
+<game>
+  <title>Griel's Quest for the Holy Porrón</title>
+  <platform>Sega Genesis / Mega Drive</platform>
+  <genre>Puzzle / Platformer</genre>
+  <developer>moon-watcher (Original by Karoshi Corp)</developer>
+  <plot>A top-down/platforming puzzle adventure where Griel navigates single-screen dungeons, pushing blocks, dodging hazards, and solving pathfinding riddles to retrieve holy relics.</plot>
+  <version>1.0</version>
+  <license>GPL-3.0-only</license>
+  <website>https://github.com/moon-watcher/GrielsQuest</website>
+</game>

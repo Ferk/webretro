@@ -1,0 +1,10 @@
+<game>
+    <title>A Touch of War</title>
+    <platform>Nintendo DS</platform>
+    <genre>Strategy</genre>
+    <developer>JimmyL</developer>
+    <plot>Native real-time strategy (RTS) game engineered specifically for the Nintendo DS, utilizing touch screen controls to select, organize, and command medieval army units.</plot>
+    <version>0.11c</version>
+    <license>zlib</license>
+    <website>https://pdroms.de/files/nintendo-ds/a-touch-of-war-v0-11c</website>
+</game>

@@ -1,0 +1,10 @@
+<game>
+  <title>Butano Fighter</title>
+  <platform>Gameboy Advance</platform>
+  <genre>Action</genre>
+  <developer>GValiente</developer>
+  <plot>Stay alive while you shoot at everything that moves! What else do you need?</plot>
+  <version>2021.08.13</version>
+  <license>Zlib</license>
+  <website>https://github.com/GValiente/butano</website>
+</game>

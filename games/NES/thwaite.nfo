@@ -1,0 +1,10 @@
+<game>
+  <title>Thwaite</title>
+  <platform>NES</platform>
+  <genre>Action</genre>
+  <developer>Damian Yerrick</developer>
+  <plot>Missiles are falling from the sky. Shoot them down with your fireworks.</plot>
+  <version>0.04</version>
+  <license>GPL-3.0</license>
+  <website>https://github.com/pinobatch/thwaite-nes</website>
+</game>

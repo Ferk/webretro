@@ -1,0 +1,14 @@
+<game>
+  <title>Concentration Room</title>
+  <platform>NES</platform>
+  <genre>Puzzle</genre>
+  <developer>Damian Yerrick</developer>
+  <plot>
+An accident at the biochemical lab has released a neurotoxin, and you've been quarantined after exposure. Maintain your sanity by playing a card-matching game.
+
+The table is littered with 10, 20, 36, 52, or 72 face-down cards. Flip two cards, and if they show the same emblem, you keep them. If they don't, flip them back.
+</plot>
+  <version>0.02a</version>
+  <license>GPL-3.0</license>
+  <website>https://github.com/pinobatch/croom-nes</website>
+</game>
