@@ -66,6 +66,13 @@ make watch # Same as `make`, but also rebuild on source file changes
 EMSCRIPTEN=/path/to/emsdk/upstream/emscripten make pages
 ```
 
+To run the static site locally, use the bundled server so browser APIs such as
+`SharedArrayBuffer` are enabled:
+
+```bash
+node scripts/serve-pages.mjs dist 8000
+```
+
 ## Cores
 
 `cores/cores.json` should contain only cores that are actually present as submodules under `cores/`.
