@@ -12,6 +12,7 @@ CORES_DIR := cores
 APP_DIR   := app
 UI_DIR    := ui
 OUT_DIR   := build
+NODE      ?= $(shell command -v node)
 
 QUIET := > /dev/null 2>&1
 ifeq ($(GITHUB_ACTIONS),true)
@@ -49,7 +50,7 @@ pages: all
 	@rm -rf dist/games
 	@mkdir -p dist/games
 	@test ! -d games || cp -a games/. dist/games/
-	@node scripts/build-games-manifest.mjs dist/games dist/games.json
+	@"$(NODE)" scripts/build-games-manifest.mjs dist/games dist/games.json
 	@touch dist/.nojekyll
 
 deps:
@@ -63,13 +64,13 @@ app:
 
 ui:
 	@echo Building application...
-	@( cd ui && node esbuild.mjs $(UI_FLAGS) $(QUIET) )
+	@( cd ui && "$(NODE)" esbuild.mjs $(UI_FLAGS) $(QUIET) )
 
 # Watch
 
 watch: clean prepare deps cores
 	@$(WATCH_CMD)
-	@( cd ui && node esbuild.mjs --watch $(UI_FLAGS) )
+	@( cd ui && "$(NODE)" esbuild.mjs --watch $(UI_FLAGS) )
 
 # Common
 

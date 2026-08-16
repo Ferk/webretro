@@ -43,7 +43,7 @@ jobs:
           git clone https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
           "$RUNNER_TEMP/emsdk/emsdk" install latest
           "$RUNNER_TEMP/emsdk/emsdk" activate latest
-          echo "$RUNNER_TEMP/emsdk" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/emsdk/upstream/emscripten" >> "$GITHUB_PATH"
           echo "EMSCRIPTEN=$RUNNER_TEMP/emsdk/upstream/emscripten" >> "$GITHUB_ENV"
 
       - name: Build static site
