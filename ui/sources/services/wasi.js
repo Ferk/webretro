@@ -159,6 +159,19 @@ export default class WASI {
 			fd_readdir: (fd, buf, buf_len, cookie, bufused) => {
 				return this.#WASI_ERRNO_SUCCESS;
 			},
+			fd_renumber: (from, to) => {
+				if (!this.#fds[from])
+					return this.#WASI_ERRNO_BADF;
+
+				if (from == to)
+					return this.#WASI_ERRNO_SUCCESS;
+
+				this.#fds[to] = this.#fds[from];
+				delete this.#fds[from];
+				this.#next_fd = Math.max(this.#next_fd, to + 1);
+
+				return this.#WASI_ERRNO_SUCCESS;
+			},
 			fd_seek: (fd, offset, whence, newoffset) => {
 				if (fd < 3)
 					return this.#WASI_ERRNO_SUCCESS;
