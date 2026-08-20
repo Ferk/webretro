@@ -151,8 +151,58 @@ export default class Interop {
 			this.#core.variables(Variable.parse(this.#instance, variables_c));
 		}
 
+		let tempRet0 = 0;
+		let setjmpId = 0;
+
+		const saveSetjmp = (env, label, table, size) => {
+			const view = new Int32Array(config.memory.buffer);
+			const table_index = table >> 2;
+
+			setjmpId++;
+			view[env >> 2] = setjmpId;
+
+			for (let i = 0; i < size; i++) {
+				const index = table_index + i * 2;
+
+				if (view[index] == 0) {
+					view[index] = setjmpId;
+					view[index + 1] = label;
+					view[index + 2] = 0;
+					tempRet0 = size;
+					return table;
+				}
+			}
+
+			const next_size = size * 2;
+			const next_table = this.#instance?.exports.realloc?.(table, 8 * (next_size + 1));
+
+			if (!next_table)
+				throw new Error('Failed to grow setjmp table.');
+
+			tempRet0 = next_size;
+			return saveSetjmp(env, label, next_table, next_size);
+		};
+
+		const testSetjmp = (id, table, size) => {
+			const view = new Int32Array(config.memory.buffer);
+			const table_index = table >> 2;
+
+			for (let i = 0; i < size; i++) {
+				const index = table_index + i * 2;
+				const current_id = view[index];
+
+				if (current_id == 0)
+					break;
+
+				if (current_id == id)
+					return view[index + 1];
+			}
+
+			return 0;
+		};
+
 		const source = await WebAssembly.instantiateStreaming(fetch(`${config.origin}/modules/${config.core}.wasm`), {
-			env: { memory: config.memory, web_video, web_audio, web_variables },
+			env: { memory: config.memory, web_video, web_audio, web_variables, saveSetjmp, testSetjmp, getTempRet0: () => tempRet0 },
 			wasi_snapshot_preview1: this.#wasi.environment,
 			wasi: { 'thread-spawn': (start_arg) => {
 				const id = filesystem.id();

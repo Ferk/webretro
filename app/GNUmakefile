@@ -16,7 +16,7 @@ LDFLAGS := \
 	-lwasi-emulated-mman -fwasm-exceptions \
 	-lsetjmp \
 	-mexec-model=reactor -Wl,--no-entry \
-	-Wl,--export=calloc,--export=free \
+	-Wl,--export=calloc,--export=free,--export=realloc \
 	-Wl,--initial-memory=$$((200 * 1024 * 1024)) \
 	-Wl,--max-memory=$$((600 * 1024 * 1024)) \
 	-Wl,--import-memory,--export-memory
