@@ -1,6 +1,7 @@
 JunieCreate
 JunieStartGame
 JunieGetError
+JunieGetStatus
 JunieDestroy
 
 JunieSetAudio

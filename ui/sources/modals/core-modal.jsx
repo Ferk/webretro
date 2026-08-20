@@ -71,6 +71,33 @@ const CheatsView = ({ cheats }) => {
 }
 
 /**
+ * @param {unknown} error
+ * @returns {{ header: string, message: string }}
+ */
+const explainStartupError = (error) => {
+	const message = error?.message || String(error);
+
+	if (message.includes('Cross-Origin-Opener-Policy') || message.includes('Cross-Origin-Embedder-Policy') || message.includes('Browser isolation')) {
+		return {
+			header: 'Browser isolation is required',
+			message: 'Start the local preview with the WebRetro server, then reload this page.',
+		};
+	}
+
+	if (message.includes('SharedArrayBuffer')) {
+		return {
+			header: 'Shared memory is unavailable',
+			message: 'Reload after the service worker is active, or serve WebRetro with COOP/COEP headers.',
+		};
+	}
+
+	return {
+		header: 'Game could not start',
+		message,
+	};
+}
+
+/**
  * @param {Object} parameters
  * @param {string} parameters.name
  * @param {number} parameters.id
@@ -184,10 +211,10 @@ export const CoreModal = ({ system, game, close }) => {
 				await core.init(system.name, game.rom, canvas.current).then(() => resize());
 			} catch (e) {
 				console.error(e);
-				const stack = e?.stack?.split('\n') ?? [];
+				const error = explainStartupError(e);
 				alert({
-					header: stack[0] || e?.name || 'Core failed',
-					message: stack.slice(1, 3).join('\n') || e?.message || String(e),
+					header: error.header,
+					message: error.message,
 					buttons: [ 'OK' ],
 				})
 				core.current?.stop(); close();

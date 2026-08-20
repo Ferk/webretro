@@ -28,10 +28,14 @@ static struct CTX {
 	bool destroying;
 
 	char *paths[JUN_PATH_MAX];
+	char *game_name;
+	char *game_extension;
 
 	struct retro_game_info game;
+	struct retro_game_info_ext game_ext;
 	struct retro_system_info system;
 	struct retro_system_av_info av;
+	const struct retro_system_content_info_override *content_overrides;
 
 	sthread_t *core_thread;
 	sthread_t *memory_thread;
@@ -39,6 +43,8 @@ static struct CTX {
 	slock_t *mutex;
 	uint64_t queue_head;
 	uint64_t queue_tail;
+	uint64_t run_entered;
+	uint64_t run_returned;
 
 	void *memory;
 	size_t memory_size;
@@ -235,6 +241,9 @@ static bool environment(unsigned cmd, void *data)
 			struct retro_variable *variable = data;
 
 			for (int8_t i = 0; i < INT8_MAX; i++) {
+				if (!CTX.variables[i].key)
+					break;
+
 				if (strcmp(CTX.variables[i].key, variable->key))
 					continue;
 
@@ -255,6 +264,18 @@ static bool environment(unsigned cmd, void *data)
 
 			return true;
 		}
+		case RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE: {
+			CTX.content_overrides = data;
+
+			return true;
+		}
+		case RETRO_ENVIRONMENT_GET_GAME_INFO_EXT: {
+			const struct retro_game_info_ext **game = data;
+
+			*game = &CTX.game_ext;
+
+			return true;
+		}
 		case RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE & ~RETRO_ENVIRONMENT_EXPERIMENTAL: {
 			int *status = data;
 
@@ -264,12 +285,19 @@ static bool environment(unsigned cmd, void *data)
 
 			return true;
 		}
+		case RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO: {
+			struct retro_system_av_info *av = data;
+
+			CTX.av = *av;
+
+			return true;
+		}
 		case RETRO_ENVIRONMENT_SET_GEOMETRY: {
 			struct retro_game_geometry *geometry = data;
 
 			CTX.av.geometry = *geometry;
 
-			return false;
+			return true;
 		}
 		default: {
 			LOG("Unhandled command: %d", command);
@@ -369,6 +397,72 @@ static char *remove_extension(const char *str)
 	return result;
 }
 
+static char *get_extension(const char *str)
+{
+	if (!str)
+		return NULL;
+
+	const char *dot = strrchr(str, '.');
+	if (!dot || !dot[1])
+		return strdup("");
+
+	char *extension = strdup(dot + 1);
+	for (size_t i = 0; extension[i]; i++)
+		if (extension[i] >= 'A' && extension[i] <= 'Z')
+			extension[i] += 'a' - 'A';
+
+	return extension;
+}
+
+static bool extension_matches(const char *extensions, const char *extension)
+{
+	if (!extensions || !extension)
+		return false;
+
+	size_t extension_length = strlen(extension);
+	const char *current = extensions;
+
+	while (*current) {
+		const char *end = strchr(current, '|');
+		size_t length = end ? (size_t) (end - current) : strlen(current);
+
+		if (length == extension_length && !strncmp(current, extension, length))
+			return true;
+
+		if (!end)
+			break;
+
+		current = end + 1;
+	}
+
+	return false;
+}
+
+static const struct retro_system_content_info_override *content_override_for_game()
+{
+	for (const struct retro_system_content_info_override *override = CTX.content_overrides;
+			override && override->extensions; override++) {
+		if (extension_matches(override->extensions, CTX.game_extension))
+			return override;
+	}
+
+	return NULL;
+}
+
+static bool game_needs_fullpath()
+{
+	const struct retro_system_content_info_override *override = content_override_for_game();
+
+	return override ? override->need_fullpath : CTX.system.need_fullpath;
+}
+
+static bool game_data_is_persistent()
+{
+	const struct retro_system_content_info_override *override = content_override_for_game();
+
+	return override ? override->persistent_data : false;
+}
+
 static void create_paths(const char *system, const char *rom)
 {
 	char *game = remove_extension(rom);
@@ -380,6 +474,8 @@ static void create_paths(const char *system, const char *rom)
 	CTX.paths[JUN_PATH_SRAM] =   core_strfmt("/%s/%s/%s.srm",   system, game, game);
 	CTX.paths[JUN_PATH_RTC] =    core_strfmt("/%s/%s/%s.rtc",   system, game, game);
 	CTX.paths[JUN_PATH_CHEATS] = core_strfmt("/%s/%s/%s.cht",   system, game, game);
+	CTX.game_name = strdup(game);
+	CTX.game_extension = get_extension(rom);
 
 	free(game);
 }
@@ -493,7 +589,9 @@ static void core_thread(void *opaque)
 		}
 
 		core_lock();
+		CTX.run_entered++;
 		CTX.sym.retro_run();
+		CTX.run_returned++;
 		core_unlock();
 	}
 }
@@ -524,19 +622,30 @@ void JunieCreate(const char *system, const char *rom)
 	CTX.sym.retro_set_audio_sample_batch(audio_sample_batch);
 }
 
+static void set_core_callbacks()
+{
+	CTX.sym.retro_set_video_refresh(video_refresh);
+	CTX.sym.retro_set_input_poll(input_poll);
+	CTX.sym.retro_set_input_state(input_state);
+	CTX.sym.retro_set_audio_sample(audio_sample);
+	CTX.sym.retro_set_audio_sample_batch(audio_sample_batch);
+}
+
 bool JunieStartGame()
 {
 	CTX.sym.retro_init();
+	set_core_callbacks();
 	CTX.sym.retro_get_system_info(&CTX.system);
 
 	CTX.game.path = CTX.paths[JUN_PATH_GAME];
+	bool needs_fullpath = game_needs_fullpath();
 
 	FILE *file = fopen(CTX.game.path, "r");
 	if (file) {
 		fseek(file, 0, SEEK_END);
 		CTX.game.size = ftell(file);
 
-		if (!CTX.system.need_fullpath) {
+		if (!needs_fullpath) {
 			fseek(file, 0, SEEK_SET);
 			CTX.game.data = calloc(CTX.game.size, 1);
 			size_t read = fread((void *) CTX.game.data, 1, CTX.game.size, file);
@@ -552,6 +661,14 @@ bool JunieStartGame()
 		core_set_error("Game file was not found in browser storage: %s", CTX.game.path);
 		return false;
 	}
+
+	CTX.game_ext.full_path = CTX.paths[JUN_PATH_GAME];
+	CTX.game_ext.dir = CTX.paths[JUN_PATH_SYSTEM];
+	CTX.game_ext.name = CTX.game_name;
+	CTX.game_ext.ext = CTX.game_extension;
+	CTX.game_ext.data = CTX.game.data;
+	CTX.game_ext.size = CTX.game.size;
+	CTX.game_ext.persistent_data = game_data_is_persistent();
 
 	CTX.initialized = CTX.sym.retro_load_game(&CTX.game);
 
@@ -570,12 +687,30 @@ bool JunieStartGame()
 	CTX.core_thread = sthread_create(core_thread, NULL);
 	CTX.memory_thread = sthread_create(memory_thread, NULL);
 
+	if (!CTX.mutex || !CTX.cond || !CTX.core_thread || !CTX.memory_thread) {
+		core_set_error("Could not start core threads.");
+		return false;
+	}
+
 	return CTX.initialized;
 }
 
 const char *JunieGetError()
 {
 	return CTX.error;
+}
+
+char *JunieGetStatus()
+{
+	return core_strfmt(
+		"run_entered=%llu run_returned=%llu fps=%f sample_rate=%f width=%u height=%u",
+		(unsigned long long) CTX.run_entered,
+		(unsigned long long) CTX.run_returned,
+		CTX.av.timing.fps,
+		CTX.av.timing.sample_rate,
+		CTX.av.geometry.base_width,
+		CTX.av.geometry.base_height
+	);
 }
 
 void JunieDestroy()
@@ -605,6 +740,8 @@ void JunieDestroy()
 	for (size_t i = 0; i < JUN_PATH_MAX; i++)
 		free(CTX.paths[i]);
 
+	free(CTX.game_name);
+	free(CTX.game_extension);
 	free(CTX.error);
 	free(CTX.memory);
 	free((void *) CTX.game.data);

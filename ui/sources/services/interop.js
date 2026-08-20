@@ -174,6 +174,7 @@ export default class Interop {
 		this.#wrap('Create',             null,      ['string', 'string']);
 		this.#wrap('StartGame',          'boolean', []);
 		this.#wrap('GetError',           'string',  []);
+		this.#wrap('GetStatus',          'string',  []);
 		this.#wrap('Destroy',            null,      []);
 
 		this.#wrap('SetAudio',           null,      ['boolean']);
@@ -230,6 +231,9 @@ export default class Interop {
 		if (!this.StartGame())
 			throw new Error(this.GetError() || 'The core could not load this game.');
 	}
+
+	/** @returns {Promise<string>} */
+	status() { return this.GetStatus?.() || 'native status is unavailable'; }
 
 	/** @returns {Promise<void>} */
 	stop() { this.Destroy?.(); }

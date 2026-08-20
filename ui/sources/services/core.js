@@ -38,6 +38,12 @@ export default class Core {
 	/** @type {(variables: Variable[]) => void} */
 	#on_variables = null;
 
+	/** @type {number} */
+	#frames = 0;
+
+	/** @type {number} */
+	#audio_batches = 0;
+
 	/**
 	 * @param {string} name
 	 * @param {WebAssembly.Memory} memory
@@ -55,8 +61,17 @@ export default class Core {
 	 * @returns {Promise<void>}
 	 */
 	async create(system, rom, canvas, on_variables) {
+		if (!crossOriginIsolated) {
+			throw new Error(
+				'Browser isolation is required to start games. Serve WebRetro with Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers, then reload the page.'
+			);
+		}
+
 		await Core.#running;
 		Core.#running = new Promise(resolve => Core.#stop = resolve);
+
+		this.#frames = 0;
+		this.#audio_batches = 0;
 
 		this.#graphics = new Graphics(canvas);
 		this.#on_variables = on_variables
@@ -86,6 +101,16 @@ export default class Core {
 		await this.#interop.start();
 		await this.settings(settings);
 		await this.cheats(cheats);
+
+		setTimeout(async () => {
+			if (this.#interop && this.#frames == 0) {
+				const status = await Promise.race([
+					this.#interop.status(),
+					new Promise(resolve => setTimeout(() => resolve('native status did not respond'), 1000)),
+				]);
+				console.warn(`Core ${this.#name} started but has not produced video callbacks yet. audio_batches=${this.#audio_batches} ${status}`);
+			}
+		}, 3000);
 	}
 
 	/**
@@ -116,6 +141,8 @@ export default class Core {
 	 * @returns {void}
 	 */
 	draw(video) {
+		this.#frames++;
+
 		const video_view = video.format == 1
 			? new Uint8Array(this.#memory.buffer, video.data, video.pitch * video.height)
 			: new Uint16Array(this.#memory.buffer, video.data, (video.pitch * video.height) / 2);
@@ -127,6 +154,8 @@ export default class Core {
 	 * @returns {void}
 	 */
 	play(audio) {
+		this.#audio_batches++;
+
 		const audio_view = new Int16Array(this.#memory.buffer, audio.data, audio.frames * 2);
 		AudioPlayer.queue(audio_view.slice(), audio.rate);
 	}

@@ -89,6 +89,7 @@ typedef struct {
 void JunieCreate(const char *system, const char *rom);
 bool JunieStartGame();
 const char *JunieGetError();
+char *JunieGetStatus();
 void JunieDestroy();
 
 void JunieSetSpeed(uint8_t speed);

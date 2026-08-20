@@ -22,7 +22,7 @@ const fs = (invert) => `
 
 	void main() {
 		gl_FragColor = texture2D(u_image, v_texCoord);
-		if (${invert}) gl_FragColor = gl_FragColor.bgra;
+		if (${invert}) gl_FragColor = vec4(gl_FragColor.bgr, 1.0);
 	}
 `;
 
