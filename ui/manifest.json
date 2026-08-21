@@ -1,7 +1,7 @@
 {
 	"$schema": "http://json.schemastore.org/web-manifest",
-	"short_name": "Junie",
-	"name": "Junie",
+	"short_name": "Gamejin",
+	"name": "Gamejin",
 	"description": "Web-based retro emulator",
 	"theme_color": "#000000",
 	"background_color": "#000000",

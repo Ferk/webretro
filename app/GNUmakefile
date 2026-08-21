@@ -22,7 +22,7 @@ LDFLAGS := \
 	-Wl,--import-memory,--export-memory
 
 OBJ := \
-	$(SRC_DIR)/junie.o \
+	$(SRC_DIR)/gamejin.o \
 	$(SRC_DIR)/interop-web.o
 
 include ../GNUmakefile.common

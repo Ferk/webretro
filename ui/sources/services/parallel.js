@@ -289,7 +289,7 @@ export default class Parallel {
 		}
 
 		if (typeof SharedArrayBuffer == 'undefined')
-			throw new Error('SharedArrayBuffer is unavailable. Reload after the service worker is active, or serve WebRetro with COOP/COEP headers.');
+			throw new Error('SharedArrayBuffer is unavailable. Reload after the service worker is active, or serve Gamejin with COOP/COEP headers.');
 
 		const sab = this.#buffers.length == 0
 			? new Int32Array(new SharedArrayBuffer(Parallel.#BUFFER_SIZE))

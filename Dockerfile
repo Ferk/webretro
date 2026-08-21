@@ -1,7 +1,7 @@
 # Build
 FROM node AS build
 
-WORKDIR /junie
+WORKDIR /gamejin
 
 RUN apt update
 RUN apt install -y jq
@@ -27,10 +27,10 @@ RUN make ui
 # Run
 FROM node:alpine AS run
 
-WORKDIR /junie
+WORKDIR /gamejin
 
 RUN npm install --global http-server
 
-COPY --from=build /junie/ui/build .
+COPY --from=build /gamejin/ui/build .
 
 CMD http-server . --port ${PORT:-8000} --cors -c-1

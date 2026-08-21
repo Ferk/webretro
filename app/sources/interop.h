@@ -1,8 +1,8 @@
 #pragma once
 
-#include "junie.h"
+#include "gamejin.h"
 
-void JunieInteropInit(JunieSymbols *sym);
-void JunieInteropVideo(const JunieVideo *video);
-void JunieInteropAudio(const JunieAudio *audio);
-void JunieInteropVariables(const JunieVariable *variables);
+void GamejinInteropInit(GamejinSymbols *sym);
+void GamejinInteropVideo(const GamejinVideo *video);
+void GamejinInteropAudio(const GamejinAudio *audio);
+void GamejinInteropVariables(const GamejinVariable *variables);

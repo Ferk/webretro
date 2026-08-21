@@ -19,8 +19,8 @@ export default class Navigation {
 			return;
 
 		this.#started = true;
-		history.replaceState({ webretro: true, root: true }, '');
-		history.pushState({ webretro: true, guard: true }, '');
+		history.replaceState({ gamejin: true, root: true }, '');
+		history.pushState({ gamejin: true, guard: true }, '');
 		addEventListener('popstate', () => this.back());
 		document.addEventListener('ionBackButton', (event) => {
 			event.detail.register(100, () => this.back());
@@ -34,7 +34,7 @@ export default class Navigation {
 	static push(close) {
 		const entry = { id: this.#next++, close };
 		this.#entries.push(entry);
-		history.pushState({ webretro: true, modal: entry.id }, '');
+		history.pushState({ gamejin: true, modal: entry.id }, '');
 
 		return () => this.remove(entry);
 	}
@@ -62,7 +62,7 @@ export default class Navigation {
 		const entry = this.#entries[this.#entries.length - 1];
 		if (!entry) {
 			this.#fallback?.();
-			history.pushState({ webretro: true }, '');
+			history.pushState({ gamejin: true }, '');
 			return;
 		}
 

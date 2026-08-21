@@ -34,7 +34,7 @@ import './styles/index.css';
 
 const appHistory = createMemoryHistory();
 
-function Junie() {
+function Gamejin() {
 
 	const [present] = useIonLoading();
 
@@ -115,4 +115,4 @@ try {
 	console.error(e);
 }
 
-createRoot(document.getElementById('root')).render(<Junie />);
+createRoot(document.getElementById('root')).render(<Gamejin />);

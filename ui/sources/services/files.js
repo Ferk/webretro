@@ -81,7 +81,7 @@ export default class Files {
 			wasi: { 'thread-spawn': () => -1 },
 		});
 
-		const ptr = source.instance.exports.JunieProbeCore();
+		const ptr = source.instance.exports.GamejinProbeCore();
 		const view = new DataView(source.instance.exports.memory.buffer, ptr);
 		const extensions = Files.#readString(source.instance, view.getUint32(8, true));
 

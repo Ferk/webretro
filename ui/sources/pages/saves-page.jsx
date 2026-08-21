@@ -48,7 +48,7 @@ export const SavesPage = () => {
 		const blob = await Zip.compress(files);
 
 		a.href = URL.createObjectURL(blob);
-		a.download = `junie-${Date.now()}.zip`;
+		a.download = `gamejin-${Date.now()}.zip`;
 		a.click();
 
 		URL.revokeObjectURL(a.href);

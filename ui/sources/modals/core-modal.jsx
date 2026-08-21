@@ -80,14 +80,14 @@ const explainStartupError = (error) => {
 	if (message.includes('Cross-Origin-Opener-Policy') || message.includes('Cross-Origin-Embedder-Policy') || message.includes('Browser isolation')) {
 		return {
 			header: 'Browser isolation is required',
-			message: 'Start the local preview with the WebRetro server, then reload this page.',
+			message: 'Start the local preview with the Gamejin server, then reload this page.',
 		};
 	}
 
 	if (message.includes('SharedArrayBuffer')) {
 		return {
 			header: 'Shared memory is unavailable',
-			message: 'Reload after the service worker is active, or serve WebRetro with COOP/COEP headers.',
+			message: 'Reload after the service worker is active, or serve Gamejin with COOP/COEP headers.',
 		};
 	}
 

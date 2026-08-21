@@ -1,4 +1,4 @@
-#include "junie.h"
+#include "gamejin.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,15 +13,15 @@
 #define LOG(msg, ...) core_log_params(__FUNCTION__, msg, __VA_ARGS__)
 
 typedef enum {
-	JUN_PATH_GAME   = 0,
-	JUN_PATH_STATE  = 1,
-	JUN_PATH_SRAM   = 2,
-	JUN_PATH_RTC    = 3,
-	JUN_PATH_CHEATS = 4,
-	JUN_PATH_SAVES  = 5,
-	JUN_PATH_SYSTEM = 6,
-	JUN_PATH_MAX    = 7,
-} JuniePatchType;
+	GAMEJIN_PATH_GAME   = 0,
+	GAMEJIN_PATH_STATE  = 1,
+	GAMEJIN_PATH_SRAM   = 2,
+	GAMEJIN_PATH_RTC    = 3,
+	GAMEJIN_PATH_CHEATS = 4,
+	GAMEJIN_PATH_SAVES  = 5,
+	GAMEJIN_PATH_SYSTEM = 6,
+	GAMEJIN_PATH_MAX    = 7,
+} GamejinPatchType;
 
 static struct CTX {
 	bool initialized;
@@ -30,7 +30,7 @@ static struct CTX {
 	bool content_required;
 	bool support_no_game;
 
-	char *paths[JUN_PATH_MAX];
+	char *paths[GAMEJIN_PATH_MAX];
 	char *game_name;
 	char *game_extension;
 
@@ -62,11 +62,11 @@ static struct CTX {
 		int16_t y;
 	} pointer;
 
-	JunieSymbols sym;
-	JunieVideo video;
-	JunieAudio audio;
-	JunieVariable variables[INT8_MAX];
-	JunieCoreInfo info;
+	GamejinSymbols sym;
+	GamejinVideo video;
+	GamejinAudio audio;
+	GamejinVariable variables[INT8_MAX];
+	GamejinCoreInfo info;
 	char *error;
 } CTX;
 
@@ -188,14 +188,14 @@ static bool environment(unsigned cmd, void *data)
 		case RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY: {
 			const char **system_directory = data;
 
-			*system_directory = CTX.paths[JUN_PATH_SYSTEM];
+			*system_directory = CTX.paths[GAMEJIN_PATH_SYSTEM];
 
 			return true;
 		}
 		case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY: {
 			const char **save_directory = data;
 
-			*save_directory = CTX.paths[JUN_PATH_SAVES];
+			*save_directory = CTX.paths[GAMEJIN_PATH_SAVES];
 
 			return true;
 		}
@@ -247,7 +247,7 @@ static bool environment(unsigned cmd, void *data)
 				free(value);
 			}
 
-			JunieInteropVariables(CTX.variables);
+			GamejinInteropVariables(CTX.variables);
 
 			return true;
 		}
@@ -321,17 +321,17 @@ static bool environment(unsigned cmd, void *data)
 	}
 }
 
-JunieCoreInfo *JunieProbeCore()
+GamejinCoreInfo *GamejinProbeCore()
 {
 	setbuf(stdout, NULL);
 
 	CTX.probing = true;
-	JunieInteropInit(&CTX.sym);
+	GamejinInteropInit(&CTX.sym);
 
 	CTX.sym.retro_set_environment(environment);
 	CTX.sym.retro_get_system_info(&CTX.system);
 
-	CTX.info = (JunieCoreInfo) {
+	CTX.info = (GamejinCoreInfo) {
 		.library_name = CTX.system.library_name,
 		.library_version = CTX.system.library_version,
 		.valid_extensions = CTX.system.valid_extensions,
@@ -357,7 +357,7 @@ static void video_refresh(const void *data, unsigned width, unsigned height, siz
 		? (float) width / (float) height
 		: CTX.av.geometry.aspect_ratio;
 
-	JunieInteropVideo(&CTX.video);
+	GamejinInteropVideo(&CTX.video);
 }
 
 static size_t audio_sample_batch(const int16_t *data, size_t frames)
@@ -378,7 +378,7 @@ static size_t audio_sample_batch(const int16_t *data, size_t frames)
 	CTX.audio.rate = CTX.av.timing.sample_rate * CTX.speed;
 
 	if (CTX.audio.frames >= CTX.audio.rate / (CTX.av.timing.fps * CTX.speed)) {
-		JunieInteropAudio(&CTX.audio);
+		GamejinInteropAudio(&CTX.audio);
 		CTX.audio.frames = 0;
 	}
 
@@ -503,13 +503,13 @@ static void create_paths(const char *system, const char *rom)
 {
 	char *game = remove_extension(rom);
 
-	CTX.paths[JUN_PATH_SYSTEM] = core_strfmt("/%s",             system);
-	CTX.paths[JUN_PATH_GAME] =   core_strfmt("/%s/%s",          system, rom);
-	CTX.paths[JUN_PATH_SAVES] =  core_strfmt("/%s/%s",          system, game);
-	CTX.paths[JUN_PATH_STATE] =  core_strfmt("/%s/%s/%s.state", system, game, game);
-	CTX.paths[JUN_PATH_SRAM] =   core_strfmt("/%s/%s/%s.srm",   system, game, game);
-	CTX.paths[JUN_PATH_RTC] =    core_strfmt("/%s/%s/%s.rtc",   system, game, game);
-	CTX.paths[JUN_PATH_CHEATS] = core_strfmt("/%s/%s/%s.cht",   system, game, game);
+	CTX.paths[GAMEJIN_PATH_SYSTEM] = core_strfmt("/%s",             system);
+	CTX.paths[GAMEJIN_PATH_GAME] =   core_strfmt("/%s/%s",          system, rom);
+	CTX.paths[GAMEJIN_PATH_SAVES] =  core_strfmt("/%s/%s",          system, game);
+	CTX.paths[GAMEJIN_PATH_STATE] =  core_strfmt("/%s/%s/%s.state", system, game, game);
+	CTX.paths[GAMEJIN_PATH_SRAM] =   core_strfmt("/%s/%s/%s.srm",   system, game, game);
+	CTX.paths[GAMEJIN_PATH_RTC] =    core_strfmt("/%s/%s/%s.rtc",   system, game, game);
+	CTX.paths[GAMEJIN_PATH_CHEATS] = core_strfmt("/%s/%s/%s.cht",   system, game, game);
 	CTX.game_name = strdup(game);
 	CTX.game_extension = get_extension(rom);
 
@@ -582,8 +582,8 @@ static void save_memory(uint32_t type, const char *path)
 
 static void save_memories()
 {
-	const char *sram_path = CTX.paths[JUN_PATH_SRAM];
-	const char *rtc_path = CTX.paths[JUN_PATH_RTC];
+	const char *sram_path = CTX.paths[GAMEJIN_PATH_SRAM];
+	const char *rtc_path = CTX.paths[GAMEJIN_PATH_RTC];
 
 	save_memory(RETRO_MEMORY_SAVE_RAM, sram_path);
 	save_memory(RETRO_MEMORY_RTC, rtc_path);
@@ -609,8 +609,8 @@ static void restore_memory(uint32_t type, const char *path)
 
 static void restore_memories()
 {
-	const char *sram_path = CTX.paths[JUN_PATH_SRAM];
-	const char *rtc_path = CTX.paths[JUN_PATH_RTC];
+	const char *sram_path = CTX.paths[GAMEJIN_PATH_SRAM];
+	const char *rtc_path = CTX.paths[GAMEJIN_PATH_RTC];
 
 	restore_memory(RETRO_MEMORY_SAVE_RAM, sram_path);
 	restore_memory(RETRO_MEMORY_RTC, rtc_path);
@@ -641,7 +641,7 @@ static void memory_thread(void *opaque)
 	save_memories();
 }
 
-void JunieCreate(const char *system, const char *rom, bool content_required)
+void GamejinCreate(const char *system, const char *rom, bool content_required)
 {
 	setbuf(stdout, NULL);
 
@@ -650,7 +650,7 @@ void JunieCreate(const char *system, const char *rom, bool content_required)
 	CTX.content_required = content_required;
 
 	create_paths(system, rom);
-	JunieInteropInit(&CTX.sym);
+	GamejinInteropInit(&CTX.sym);
 
 	CTX.sym.retro_set_environment(environment);
 	CTX.sym.retro_set_video_refresh(video_refresh);
@@ -669,13 +669,13 @@ static void set_core_callbacks()
 	CTX.sym.retro_set_audio_sample_batch(audio_sample_batch);
 }
 
-bool JunieStartGame()
+bool GamejinStartGame()
 {
 	CTX.sym.retro_init();
 	set_core_callbacks();
 	CTX.sym.retro_get_system_info(&CTX.system);
 
-	CTX.game.path = CTX.paths[JUN_PATH_GAME];
+	CTX.game.path = CTX.paths[GAMEJIN_PATH_GAME];
 	bool needs_fullpath = game_needs_fullpath();
 
 	FILE *file = fopen(CTX.game.path, "r");
@@ -703,8 +703,8 @@ bool JunieStartGame()
 	const struct retro_game_info *game = NULL;
 
 	if (file || CTX.content_required) {
-		CTX.game_ext.full_path = CTX.paths[JUN_PATH_GAME];
-		CTX.game_ext.dir = CTX.paths[JUN_PATH_SYSTEM];
+		CTX.game_ext.full_path = CTX.paths[GAMEJIN_PATH_GAME];
+		CTX.game_ext.dir = CTX.paths[GAMEJIN_PATH_SYSTEM];
 		CTX.game_ext.name = CTX.game_name;
 		CTX.game_ext.ext = CTX.game_extension;
 		CTX.game_ext.data = CTX.game.data;
@@ -738,12 +738,12 @@ bool JunieStartGame()
 	return CTX.initialized;
 }
 
-const char *JunieGetError()
+const char *GamejinGetError()
 {
 	return CTX.error;
 }
 
-char *JunieGetStatus()
+char *GamejinGetStatus()
 {
 	return core_strfmt(
 		"run_entered=%llu run_returned=%llu fps=%f sample_rate=%f width=%u height=%u",
@@ -756,7 +756,7 @@ char *JunieGetStatus()
 	);
 }
 
-void JunieDestroy()
+void GamejinDestroy()
 {
 	CTX.destroying = true;
 	if (CTX.core_thread)
@@ -780,7 +780,7 @@ void JunieDestroy()
 		free(CTX.variables[i].value);
 	}
 
-	for (size_t i = 0; i < JUN_PATH_MAX; i++)
+	for (size_t i = 0; i < GAMEJIN_PATH_MAX; i++)
 		free(CTX.paths[i]);
 
 	free(CTX.game_name);
@@ -792,17 +792,17 @@ void JunieDestroy()
 	CTX = (struct CTX) {0};
 }
 
-void JunieSetAudio(bool enable)
+void GamejinSetAudio(bool enable)
 {
 	CTX.audio.enable = enable;
 }
 
-void JunieSetSpeed(uint8_t speed)
+void GamejinSetSpeed(uint8_t speed)
 {
 	CTX.speed = speed;
 }
 
-void JunieSetInput(JunieInputDevice device, JunieInputID id, int16_t value)
+void GamejinSetInput(GamejinInputDevice device, GamejinInputID id, int16_t value)
 {
 	if (device == RETRO_DEVICE_JOYPAD)
 		CTX.inputs[id] = value;
@@ -824,7 +824,7 @@ void JunieSetInput(JunieInputDevice device, JunieInputID id, int16_t value)
 	}
 }
 
-void JunieSetVariables(const JunieVariable *variables)
+void GamejinSetVariables(const GamejinVariable *variables)
 {
 	core_lock();
 
@@ -851,7 +851,7 @@ void JunieSetVariables(const JunieVariable *variables)
 	core_unlock();
 }
 
-void JunieSetCheats(const JunieCheat *cheats)
+void GamejinSetCheats(const GamejinCheat *cheats)
 {
 	core_lock();
 
@@ -872,7 +872,7 @@ void JunieSetCheats(const JunieCheat *cheats)
 	core_unlock();
 }
 
-void JunieSaveState()
+void GamejinSaveState()
 {
 	core_lock();
 
@@ -882,7 +882,7 @@ void JunieSaveState()
 
 	CTX.sym.retro_serialize(data, size);
 
-	FILE *file = fopen(CTX.paths[JUN_PATH_STATE], "w+");
+	FILE *file = fopen(CTX.paths[GAMEJIN_PATH_STATE], "w+");
 	fwrite(data, 1, size, file);
 	fclose(file);
 
@@ -891,7 +891,7 @@ void JunieSaveState()
 	core_unlock();
 }
 
-void JunieRestoreState()
+void GamejinRestoreState()
 {
 	core_lock();
 
@@ -899,7 +899,7 @@ void JunieRestoreState()
 	if (!size)
 		return;
 
-	FILE *file = fopen(CTX.paths[JUN_PATH_STATE], "r");
+	FILE *file = fopen(CTX.paths[GAMEJIN_PATH_STATE], "r");
 	if (!file)
 		return;
 

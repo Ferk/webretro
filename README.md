@@ -1,14 +1,14 @@
 <p align="center"><img src="ui/assets/icon-round.png" width="150" /></p>
 
-# <p align="center">WebRetro</p>
+# <p align="center">Gamejin</p>
 
-WebRetro is a fork of [Junie](https://github.com/Namaneo/Junie), a libretro frontend that aims to run entirely in your browser, desktop or mobile.
+Gamejin is a libretro frontend that aims to run entirely in your browser, desktop or mobile.
 * No installation on the end-devices.
 * Near-native performances thanks to WebAssembly.
 * Wide range of supported/compatible cores (... soon).
 * Progressive Web Application entirely accessible offline.
 
-Junie currently runs on most recent browsers, but your experience will probably be better on Chrome and Safari.
+Gamejin currently runs on most recent browsers, but your experience will probably be better on Chrome and Safari.
 
 ***Disclaimer**: development is still in progress. Back up local saves before updates.*
 
@@ -86,4 +86,4 @@ To add another core later, add the submodule and then add its metadata back to `
 
 # License
 
-Junie is licensed under the [GNU General Public License v3.0](https://github.com/Namaneo/Junie/blob/main/LICENSE.md).
+Gamejin is licensed under the [GNU General Public License v3.0](LICENSE.md).

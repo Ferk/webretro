@@ -64,7 +64,7 @@ export default class Core {
 	async create(system, rom, contentRequired, canvas, on_variables) {
 		if (!crossOriginIsolated) {
 			throw new Error(
-				'Browser isolation is required to start games. Serve WebRetro with Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers, then reload the page.'
+				'Browser isolation is required to start games. Serve Gamejin with Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers, then reload the page.'
 			);
 		}
 

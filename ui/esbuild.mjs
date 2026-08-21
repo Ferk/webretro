@@ -48,8 +48,8 @@ function plugin_html(html, sw) {
 
 				let code_html = readFileSync(html, 'utf-8');
 				code_html = code_html.replace(
-					'window.junie_build = null;',
-					`window.junie_build = '${options.version}';`
+					'window.gamejin_build = null;',
+					`window.gamejin_build = '${options.version}';`
 				);
 
 				let code_sw = readFileSync(sw, 'utf-8');

@@ -16,7 +16,7 @@ import Files from '../services/files';
  * @returns {[T, (settings: Settings) => void, (value: T) => void]}
  */
 const useStatus = (lib, type, value, update, callback) => {
-	const name = `${lib}_junie_${type}`;
+	const name = `${lib}_gamejin_${type}`;
 
 	const [state, setState] = useState(/** @type {T} */ (value));
 

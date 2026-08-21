@@ -5,11 +5,11 @@
 #include <stdlib.h>
 
 #define IMPORT(name) __attribute__((import_module("env"), import_name(#name))) name
-void IMPORT(web_video)(const JunieVideo *video);
-void IMPORT(web_audio)(const JunieAudio *audio);
-void IMPORT(web_variables)(const JunieVariable *variables);
+void IMPORT(web_video)(const GamejinVideo *video);
+void IMPORT(web_audio)(const GamejinAudio *audio);
+void IMPORT(web_variables)(const GamejinVariable *variables);
 
-void JunieInteropInit(JunieSymbols *sym)
+void GamejinInteropInit(GamejinSymbols *sym)
 {
 	#define MAP_SYMBOL(function) sym->function = function
 
@@ -39,17 +39,17 @@ void JunieInteropInit(JunieSymbols *sym)
 	#undef MAP_SYMBOL
 }
 
-void JunieInteropVideo(const JunieVideo *video)
+void GamejinInteropVideo(const GamejinVideo *video)
 {
 	web_video(video);
 }
 
-void JunieInteropAudio(const JunieAudio *audio)
+void GamejinInteropAudio(const GamejinAudio *audio)
 {
 	web_audio(audio);
 }
 
-void JunieInteropVariables(const JunieVariable *variables)
+void GamejinInteropVariables(const GamejinVariable *variables)
 {
 	web_variables(variables);
 }

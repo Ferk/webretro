@@ -1,15 +1,15 @@
-JunieCreate
-JunieProbeCore
-JunieStartGame
-JunieGetError
-JunieGetStatus
-JunieDestroy
+GamejinCreate
+GamejinProbeCore
+GamejinStartGame
+GamejinGetError
+GamejinGetStatus
+GamejinDestroy
 
-JunieSetAudio
-JunieSetSpeed
-JunieSetInput
-JunieSetVariables
-JunieSetCheats
+GamejinSetAudio
+GamejinSetSpeed
+GamejinSetInput
+GamejinSetVariables
+GamejinSetCheats
 
-JunieSaveState
-JunieRestoreState
+GamejinSaveState
+GamejinRestoreState

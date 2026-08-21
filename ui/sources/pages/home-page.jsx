@@ -25,10 +25,10 @@ export const HomePage = () => {
 
 	const [open, close] = useIonModal(GamesModal, { system, close: closeModal });
 
-	const version = window.junie_build.split('-')[0];
-	const build = window.junie_build.split('-')[1];
+	const version = window.gamejin_build.split('-')[0];
+	const build = window.gamejin_build.split('-')[1];
 	const date = new Date(build * 1000).toUTCString();
-	const [present] = useToast(`Junie - ${version} (${build})`);
+	const [present] = useToast(`Gamejin - ${version} (${build})`);
 
 	/**
 	 * @returns {Promise<void>}
@@ -61,7 +61,7 @@ export const HomePage = () => {
 
 			<IonHeader>
 				<IonToolbar>
-					<IonTitle>Junie</IonTitle>
+					<IonTitle>Gamejin</IonTitle>
 					<IonButtons slot="end">
 						<IonButton onClick={() => present(date)}>
 							<IonIcon slot="icon-only" icon={informationCircleOutline} />

@@ -3,7 +3,7 @@ export default class Database {
 	static #db = null;
 
 	/** @type {string} */
-	static get #name() { return 'Junie'; };
+	static get #name() { return 'Gamejin'; };
 
 	/** @type {string} */
 	static get #store() { return 'FILE_DATA'; };
