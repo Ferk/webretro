@@ -24,8 +24,12 @@ export default class Requests {
 	 * @returns {Game[]}
 	 */
 	static #gamesFor(system, manifest) {
-		const games = manifest[system.name] ?? [];
-		return games.map(rom => new Game(system, rom, false));
+		const games = [
+			...system.builtinGames.map(rom => new Game(system, rom, true, true)),
+			...(manifest[system.name] ?? []).map(rom => new Game(system, rom, false)),
+		];
+
+		return games;
 	}
 
 	/**
@@ -59,8 +63,6 @@ export default class Requests {
 				...available.filter(game => !games.find(installed => game.rom == installed.rom)),
 			];
 
-			if (system.name == '2048' && !system.games.find(game => game.rom == '2048'))
-				system.games.push(new Game(system, '2048', true));
 		}
 
 		return systems;

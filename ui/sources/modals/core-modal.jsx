@@ -209,7 +209,7 @@ export const CoreModal = ({ system, game, close }) => {
 	useEffect(() => {
 		(async () => {
 			try {
-				await core.init(system.name, game.rom, canvas.current).then(() => resize());
+				await core.init(system.name, game.rom, system.contentRequired, canvas.current).then(() => resize());
 			} catch (e) {
 				console.error(e);
 				const error = explainStartupError(e);

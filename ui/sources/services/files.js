@@ -6,10 +6,14 @@ import { Settings } from '../entities/settings';
 import Path from './path';
 import Parallel from './parallel';
 import Filesystem from './filesystem';
+import WASI from './wasi';
 
 export default class Files {
 	/** @type {Object} */
 	static #cores = null;
+
+	/** @type {Object} */
+	static #coreInfo = {};
 
 	/** @type {TextEncoder} */
 	static #encoder = new TextEncoder();
@@ -22,6 +26,76 @@ export default class Files {
 
 	/** @type {Filesystem} */
 	static #filesystem = null
+
+	/**
+	 * @param {WebAssembly.Instance} instance
+	 * @param {number} ptr
+	 * @returns {string}
+	 */
+	static #readString(instance, ptr) {
+		if (!ptr)
+			return null;
+
+		let view = new Uint8Array(instance.exports.memory.buffer, ptr);
+		let length = 0; for (; view[length] != 0; length++);
+		view = new Uint8Array(instance.exports.memory.buffer, ptr, length);
+
+		return Files.#decoder.decode(new Uint8Array(view));
+	}
+
+	/**
+	 * @param {string} core
+	 * @returns {Promise<Object>}
+	 */
+	static async #probeCore(core) {
+		if (Files.#coreInfo[core])
+			return Files.#coreInfo[core];
+
+		const memory = new WebAssembly.Memory({
+			initial: (200 * 1024 * 1024) / 65536,
+			maximum: (600 * 1024 * 1024) / 65536,
+			shared: true,
+		});
+		const filesystem = {
+			id: () => 0,
+			size: () => -1,
+			read: () => -1,
+			write: () => -1,
+			mkdir: () => -1,
+			rmdir: () => -1,
+			remove: () => -1,
+		};
+		const wasi = new WASI(memory, filesystem);
+
+		const source = await WebAssembly.instantiateStreaming(fetch(`modules/${core}.wasm`), {
+			env: {
+				memory,
+				web_video: () => {},
+				web_audio: () => {},
+				web_variables: () => {},
+				saveSetjmp: () => 0,
+				testSetjmp: () => 0,
+				getTempRet0: () => 0,
+			},
+			wasi_snapshot_preview1: wasi.environment,
+			wasi: { 'thread-spawn': () => -1 },
+		});
+
+		const ptr = source.instance.exports.JunieProbeCore();
+		const view = new DataView(source.instance.exports.memory.buffer, ptr);
+		const extensions = Files.#readString(source.instance, view.getUint32(8, true));
+
+		Files.#coreInfo[core] = {
+			name: Files.#readString(source.instance, view.getUint32(0, true)),
+			version: Files.#readString(source.instance, view.getUint32(4, true)),
+			extensions: extensions ? extensions.split('|').filter(Boolean) : [],
+			needFullpath: !!view.getUint8(12),
+			blockExtract: !!view.getUint8(13),
+			contentRequired: !view.getUint8(14),
+		};
+
+		return Files.#coreInfo[core];
+	}
 
 	static async #fs() {
 		if (!this.#filesystem) {
@@ -129,13 +203,24 @@ export default class Files {
 
 			const systems = [];
 			for (const core of Object.keys(Files.#cores)) {
+				const metadata = Files.#cores[core];
+				const discovered = await Files.#probeCore(core);
+
 				for (const system of Files.#cores[core].systems) {
 					const games = stored.find(x => x.name == system)?.games ?? [];
+					const contentRequired = metadata.contentRequired ?? discovered.contentRequired;
+					const builtinGames = metadata.builtinGames ?? (!contentRequired ? [system] : []);
 
 					systems.push({
 						name: system,
 						lib_name: core,
-						core_name: Files.#cores[core].name,
+						core_name: metadata.name ?? discovered.name,
+						core_version: metadata.version ?? discovered.version,
+						extensions: metadata.extensions ?? discovered.extensions,
+						needFullpath: metadata.needFullpath ?? discovered.needFullpath,
+						blockExtract: metadata.blockExtract ?? discovered.blockExtract,
+						contentRequired,
+						builtinGames,
 						games: games.map(game => new Game(system, game.rom, false)),
 					});
 				}

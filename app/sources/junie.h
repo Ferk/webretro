@@ -86,7 +86,17 @@ typedef struct {
 	char *code;
 } JunieCheat;
 
-void JunieCreate(const char *system, const char *rom);
+typedef struct {
+	const char *library_name;
+	const char *library_version;
+	const char *valid_extensions;
+	bool need_fullpath;
+	bool block_extract;
+	bool support_no_game;
+} JunieCoreInfo;
+
+JunieCoreInfo *JunieProbeCore();
+void JunieCreate(const char *system, const char *rom, bool content_required);
 bool JunieStartGame();
 const char *JunieGetError();
 char *JunieGetStatus();

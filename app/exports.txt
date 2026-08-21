@@ -1,4 +1,5 @@
 JunieCreate
+JunieProbeCore
 JunieStartGame
 JunieGetError
 JunieGetStatus

@@ -19,6 +19,9 @@ class InteropConfig {
 	/** @type {string} */
 	rom = null;
 
+	/** @type {boolean} */
+	contentRequired = true;
+
 	/** @type {WebAssembly.Memory} */
 	memory = null;
 
@@ -221,7 +224,7 @@ export default class Interop {
 
 		this.#instance.exports._initialize();
 
-		this.#wrap('Create',             null,      ['string', 'string']);
+		this.#wrap('Create',             null,      ['string', 'string', 'boolean']);
 		this.#wrap('StartGame',          'boolean', []);
 		this.#wrap('GetError',           'string',  []);
 		this.#wrap('GetStatus',          'string',  []);
@@ -236,7 +239,7 @@ export default class Interop {
 		this.#wrap('SaveState',          null,      []);
 		this.#wrap('RestoreState',       null,      []);
 
-		this.Create(config.system, config.rom);
+		this.Create(config.system, config.rom, config.contentRequired);
 	}
 
 	/** @param {Variable[]} variables @returns {Promise<void>} */

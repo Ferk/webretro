@@ -24,17 +24,17 @@ const GameCard = ({ game, status, download, play, remove }) => {
 			{status.game == game.rom &&
 				<IonProgressBar value={status.progress}></IonProgressBar>
 			}
-			{status.game != game.rom && !game.installed &&
+			{status.game != game.rom && !game.installed && !game.builtin &&
 				<IonButton onClick={() => download(game)} disabled={!!status.game} fill="clear">
 					<IonIcon slot="icon-only" icon={cloudDownloadOutline} />
 				</IonButton>
 			}
-			{status.game != game.rom && game.installed && game.rom != '2048' &&
+			{status.game != game.rom && game.installed && !game.builtin &&
 				<IonButton onClick={() => remove(game)} disabled={!!status.game} fill="clear">
 					<IonIcon slot="icon-only" icon={trashOutline} color="medium" />
 				</IonButton>
 			}
-			{status.game != game.rom && game.installed &&
+			{status.game != game.rom && (game.installed || game.builtin) &&
 				<IonButton onClick={() => play(game)} disabled={!!status.game} fill="clear">
 					<IonIcon slot="icon-only" icon={playOutline} />
 				</IonButton>

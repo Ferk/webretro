@@ -3,6 +3,7 @@
 		"name": "2048",
 		"repository": "libretro-2048",
 		"makefile": "Makefile.libretro",
+		"builtinGames": ["2048"],
 		"systems": ["2048"]
 	},
 	"gambatte": {

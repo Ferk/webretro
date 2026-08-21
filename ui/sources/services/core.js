@@ -56,11 +56,12 @@ export default class Core {
 	/**
 	 * @param {string} system
 	 * @param {string} rom
+	 * @param {boolean} contentRequired
 	 * @param {HTMLCanvasElement} canvas
 	 * @param {(variables: Variable[]) => void} on_variables
 	 * @returns {Promise<void>}
 	 */
-	async create(system, rom, canvas, on_variables) {
+	async create(system, rom, contentRequired, canvas, on_variables) {
 		if (!crossOriginIsolated) {
 			throw new Error(
 				'Browser isolation is required to start games. Serve WebRetro with Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers, then reload the page.'
@@ -77,7 +78,7 @@ export default class Core {
 		this.#on_variables = on_variables
 
 		const origin = location.origin + location.pathname.substring(0, location.pathname.lastIndexOf('/'));
-		const config = { core: this.#name, system, rom, origin, memory: this.#memory };
+		const config = { core: this.#name, system, rom, contentRequired, origin, memory: this.#memory };
 		const script = await (await fetch('worker.js')).text();
 
 		const handler = async message => {

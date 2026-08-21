@@ -26,6 +26,9 @@ typedef enum {
 static struct CTX {
 	bool initialized;
 	bool destroying;
+	bool probing;
+	bool content_required;
+	bool support_no_game;
 
 	char *paths[JUN_PATH_MAX];
 	char *game_name;
@@ -63,6 +66,7 @@ static struct CTX {
 	JunieVideo video;
 	JunieAudio audio;
 	JunieVariable variables[INT8_MAX];
+	JunieCoreInfo info;
 	char *error;
 } CTX;
 
@@ -207,7 +211,17 @@ static bool environment(unsigned cmd, void *data)
 
 			return true;
 		}
+		case RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME: {
+			bool *support = data;
+
+			CTX.support_no_game = *support;
+
+			return true;
+		}
 		case RETRO_ENVIRONMENT_SET_VARIABLES: {
+			if (CTX.probing)
+				return true;
+
 			const struct retro_variable *variables = data;
 
 			for (int8_t i = 0; i < INT8_MAX; i++) {
@@ -305,6 +319,28 @@ static bool environment(unsigned cmd, void *data)
 			return false;
 		}
 	}
+}
+
+JunieCoreInfo *JunieProbeCore()
+{
+	setbuf(stdout, NULL);
+
+	CTX.probing = true;
+	JunieInteropInit(&CTX.sym);
+
+	CTX.sym.retro_set_environment(environment);
+	CTX.sym.retro_get_system_info(&CTX.system);
+
+	CTX.info = (JunieCoreInfo) {
+		.library_name = CTX.system.library_name,
+		.library_version = CTX.system.library_version,
+		.valid_extensions = CTX.system.valid_extensions,
+		.need_fullpath = CTX.system.need_fullpath,
+		.block_extract = CTX.system.block_extract,
+		.support_no_game = CTX.support_no_game,
+	};
+
+	return &CTX.info;
 }
 
 static void video_refresh(const void *data, unsigned width, unsigned height, size_t pitch)
@@ -605,11 +641,13 @@ static void memory_thread(void *opaque)
 	save_memories();
 }
 
-void JunieCreate(const char *system, const char *rom)
+void JunieCreate(const char *system, const char *rom, bool content_required)
 {
 	setbuf(stdout, NULL);
 
 	CTX.speed = 1;
+	CTX.probing = false;
+	CTX.content_required = content_required;
 
 	create_paths(system, rom);
 	JunieInteropInit(&CTX.sym);
@@ -657,20 +695,25 @@ bool JunieStartGame()
 		}
 
 		fclose(file);
-	} else {
+	} else if (CTX.content_required) {
 		core_set_error("Game file was not found in browser storage: %s", CTX.game.path);
 		return false;
 	}
 
-	CTX.game_ext.full_path = CTX.paths[JUN_PATH_GAME];
-	CTX.game_ext.dir = CTX.paths[JUN_PATH_SYSTEM];
-	CTX.game_ext.name = CTX.game_name;
-	CTX.game_ext.ext = CTX.game_extension;
-	CTX.game_ext.data = CTX.game.data;
-	CTX.game_ext.size = CTX.game.size;
-	CTX.game_ext.persistent_data = game_data_is_persistent();
+	const struct retro_game_info *game = NULL;
 
-	CTX.initialized = CTX.sym.retro_load_game(&CTX.game);
+	if (file || CTX.content_required) {
+		CTX.game_ext.full_path = CTX.paths[JUN_PATH_GAME];
+		CTX.game_ext.dir = CTX.paths[JUN_PATH_SYSTEM];
+		CTX.game_ext.name = CTX.game_name;
+		CTX.game_ext.ext = CTX.game_extension;
+		CTX.game_ext.data = CTX.game.data;
+		CTX.game_ext.size = CTX.game.size;
+		CTX.game_ext.persistent_data = game_data_is_persistent();
+		game = &CTX.game;
+	}
+
+	CTX.initialized = CTX.sym.retro_load_game(game);
 
 	if (!CTX.initialized) {
 		core_set_error("The %s core rejected this game: %s", CTX.system.library_name, CTX.game.path);
