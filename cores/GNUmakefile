@@ -34,6 +34,7 @@ lib%.a: fetch-%
 	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
 	cmake=`jq -r '."$*".cmake // false' cores.json` && \
 	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
+	cmake_flags=`jq -r '."$*".cmakeFlags[]? // empty' cores.json` && \
 	cmake_c_flags='$(DEFINES)' && \
 	cmake_cxx_flags='$(DEFINES)' && \
 	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
@@ -80,6 +81,7 @@ lib%.a: fetch-%
 			-DCMAKE_C_FLAGS="$$cmake_c_flags" \
 			-DCMAKE_CXX_FLAGS="$$cmake_cxx_flags" \
 			-DBUILD_LIBRETRO=ON \
+			$$cmake_flags \
 			-DLIBRETRO_STATIC=ON \
 			-DSKIP_LIBRARY=ON \
 			-DDISABLE_FRONTENDS=ON \

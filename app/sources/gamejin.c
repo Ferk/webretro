@@ -48,6 +48,8 @@ static struct CTX {
 	uint64_t queue_tail;
 	uint64_t run_entered;
 	uint64_t run_returned;
+	double run_timestamp;
+	double run_remaining_frames;
 
 	void *memory;
 	size_t memory_size;
@@ -65,6 +67,7 @@ static struct CTX {
 	GamejinSymbols sym;
 	GamejinVideo video;
 	GamejinAudio audio;
+	struct retro_frame_time_callback frame_time;
 	GamejinVariable variables[INT8_MAX];
 	GamejinCoreInfo info;
 	char *error;
@@ -182,6 +185,13 @@ static bool environment(unsigned cmd, void *data)
 			struct retro_log_callback *callback = data;
 
 			callback->log = core_log_cb;
+
+			return true;
+		}
+		case RETRO_ENVIRONMENT_SET_FRAME_TIME_CALLBACK: {
+			struct retro_frame_time_callback *callback = data;
+
+			CTX.frame_time = *callback;
 
 			return true;
 		}
@@ -535,25 +545,22 @@ static void core_unlock()
 
 static bool core_should_run()
 {
-	static double timestamp = 0;
-	static double remaining_frames = 0;
-
-	if (timestamp == 0) {
-		timestamp = core_get_ticks();
+	if (CTX.run_timestamp == 0) {
+		CTX.run_timestamp = core_get_ticks();
 		return true;
 	}
 
 	double current = core_get_ticks();
-	double total_loop = current - timestamp;
-	timestamp = current;
+	double total_loop = current - CTX.run_timestamp;
+	CTX.run_timestamp = current;
 
 	if (total_loop > 0) {
 		double expected_frames = CTX.av.timing.fps * CTX.speed;
-		remaining_frames += expected_frames / (1000.0 / total_loop);
+		CTX.run_remaining_frames += expected_frames / (1000.0 / total_loop);
 	}
 
 	double pending = 0;
-	remaining_frames = modf(remaining_frames, &pending);
+	CTX.run_remaining_frames = modf(CTX.run_remaining_frames, &pending);
 
 	return pending >= 1;
 }
@@ -626,6 +633,8 @@ static void core_thread(void *opaque)
 
 		core_lock();
 		CTX.run_entered++;
+		if (CTX.frame_time.callback)
+			CTX.frame_time.callback(CTX.frame_time.reference);
 		CTX.sym.retro_run();
 		CTX.run_returned++;
 		core_unlock();
