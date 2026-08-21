@@ -7,6 +7,9 @@ export default class Input {
 	/** @type {boolean} */
 	#pressed = {};
 
+	/** @type {{[key: number]: boolean}} */
+	#gamepad = {};
+
 	/**
 	 * @param {DOMRect} rect
 	 * @param {number} x
@@ -84,6 +87,44 @@ export default class Input {
 		];
 	}
 
+	/**
+	 * @returns {InputMessage[]}
+	 */
+	gamepad() {
+		const pads = navigator.getGamepads?.() ?? [];
+		const pad = [...pads].find(value => value?.connected);
+		const state = {};
+
+		if (pad) {
+			const pressed = (index) => !!pad.buttons[index]?.pressed;
+			const axis = (index) => Math.abs(pad.axes[index] ?? 0) > 0.5 ? pad.axes[index] : 0;
+
+			state[Input.Joypad.B]      = pressed(0);
+			state[Input.Joypad.A]      = pressed(1);
+			state[Input.Joypad.Y]      = pressed(2);
+			state[Input.Joypad.X]      = pressed(3);
+			state[Input.Joypad.L]      = pressed(4);
+			state[Input.Joypad.R]      = pressed(5);
+			state[Input.Joypad.SELECT] = pressed(8);
+			state[Input.Joypad.START]  = pressed(9);
+			state[Input.Joypad.UP]     = pressed(12) || axis(1) < 0;
+			state[Input.Joypad.DOWN]   = pressed(13) || axis(1) > 0;
+			state[Input.Joypad.LEFT]   = pressed(14) || axis(0) < 0;
+			state[Input.Joypad.RIGHT]  = pressed(15) || axis(0) > 0;
+		}
+
+		const messages = [];
+		for (const id of Input.Joypad.ALL) {
+			const value = !!state[id];
+			if (this.#gamepad[id] != value) {
+				messages.push({ device: Input.Device.JOYPAD, id, value });
+				this.#gamepad[id] = value;
+			}
+		}
+
+		return messages;
+	}
+
 	static Device = class {
 		static get JOYPAD()  { return 1; }
 		static get POINTER() { return 6; }
@@ -102,6 +143,14 @@ export default class Input {
 		static get X()      { return 9;  }
 		static get L()      { return 10; }
 		static get R()      { return 11; }
+
+		static get ALL() {
+			return [
+				this.B, this.Y, this.SELECT, this.START,
+				this.UP, this.DOWN, this.LEFT, this.RIGHT,
+				this.A, this.X, this.L, this.R,
+			];
+		}
 	}
 
 	static Pointer = class {

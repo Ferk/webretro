@@ -152,6 +152,7 @@ const Control = ({ name, id, type, inset }) => {
 export const CoreModal = ({ system, game, close }) => {
 	const content = useRef(/** @type {HTMLIonContentElement} */ (null));
 	const canvas  = useRef(/** @type {HTMLCanvasElement}     */ (null));
+	const hardware = useRef(new Input());
 
 	const [core, audio, speed, gamepad] = useCore(system.lib_name);
 	const [window_w, window_h] = useSize({ current: document.body });
@@ -230,6 +231,33 @@ export const CoreModal = ({ system, game, close }) => {
 		content.current.addEventListener('touchend',    (e) => e.preventDefault());
 		content.current.addEventListener('touchcancel', (e) => e.preventDefault());
 	}, [content?.current]);
+
+	useEffect(() => {
+		let frame = 0;
+		let stopped = false;
+		let polling = false;
+
+		const poll = () => {
+			if (!polling) {
+				const messages = hardware.current.gamepad();
+
+				if (messages.length) {
+					polling = true;
+					core.current.input(messages).finally(() => polling = false);
+				}
+			}
+
+			if (!stopped)
+				frame = requestAnimationFrame(poll);
+		};
+
+		frame = requestAnimationFrame(poll);
+
+		return () => {
+			stopped = true;
+			cancelAnimationFrame(frame);
+		};
+	}, []);
 
 	useEffect(() => resize(), [core.current?.aspect_ratio, window_w, window_h, canvas_w, canvas_h]);
 

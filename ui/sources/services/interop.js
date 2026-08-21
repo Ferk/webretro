@@ -1,4 +1,4 @@
-import { InputButton, InputTouch } from '../entities/input';
+import { InputButton, InputMessage, InputTouch } from '../entities/input';
 import { Cheat } from '../entities/cheat';
 import { Variable } from '../entities/variable';
 import { Video } from '../entities/video';
@@ -273,6 +273,12 @@ export default class Interop {
 	 */
 	touch(touch, rect, width, height) {
 		for (const message of this.#input.touch(touch, rect, width, height))
+			this.SetInput(message.device, message.id, message.value);
+	}
+
+	/** @param {InputMessage[]} messages @returns {Promise<void>} */
+	input(messages) {
+		for (const message of messages)
 			this.SetInput(message.device, message.id, message.value);
 	}
 

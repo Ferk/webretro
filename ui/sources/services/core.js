@@ -1,4 +1,4 @@
-import { InputButton, InputTouch } from '../entities/input';
+import { InputButton, InputMessage, InputTouch } from '../entities/input';
 import { Cheat } from '../entities/cheat';
 import { Settings } from '../entities/settings';
 import { Variable } from '../entities/variable';
@@ -185,6 +185,9 @@ export default class Core {
 
 	/** @param {InputTouch} touch @param {DOMRect} rect @param {number} width @param {number} height @returns {Promise<void>} */
 	async touch(touch, rect, width, height) { await this.#interop?.touch(touch, rect, width, height); }
+
+	/** @param {InputMessage[]} messages @returns {Promise<void>} */
+	async input(messages) { await this.#interop?.input(messages); }
 
 	/** @returns {Promise<void>} */
 	async save() { await this.#interop?.save(); }
