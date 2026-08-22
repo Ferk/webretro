@@ -16,6 +16,7 @@ CORE_FLAGS := HAVE_OPENGL=0 STATIC_LINKING=1 AR="$(AR)" RANLIB="$(RANLIB)"
 all: $(LIBRARIES:%=lib%.a)
 
 clean: $(LIBRARIES:%=clean-%)
+clear: $(LIBRARIES:%=clear-%)
 
 fetch-%:
 	@name=`jq -r '."$*".repository // "$*"' cores.json` && \
@@ -110,10 +111,18 @@ lib%.a: fetch-%
 			$$flag_args $$extra_flags $(QUIET); \
 	fi
 
-clean-%:
+clear-%:
 	@rm -f `pwd`/lib$*.a
+	@name=`jq -r '."$*".repository // "$*"' cores.json` && \
+	rm -rf `pwd`/$*-libs `pwd`/../build/cores/$$name
+
+clean-%: clear-%
 	@target=`pwd`/lib$*.a && \
 	name=`jq -r '."$*".repository // "$*"' cores.json` && \
+	cmake=`jq -r '."$*".cmake // false' cores.json` && \
+	if test "$$cmake" = true; then \
+		exit 0; \
+	fi && \
 	makedir=`jq -r '."$*".directory // ""' cores.json` && \
 	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
 	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
