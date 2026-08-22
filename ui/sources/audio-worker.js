@@ -5,15 +5,22 @@ class AudioProcessor extends AudioWorkletProcessor {
 	/** @type {number} */
 	#channels = 0;
 
+	/** @type {number} */
+	#queued = 0;
+
 	constructor(options) {
 		super();
 
 		this.#channels = options.outputChannelCount[0];
 		this.port.onmessage = message => {
 			this.#buffers.push(message.data);
-			let size = this.#buffers.reduce((size, buffer) => size + buffer.length, 0);
-			while (size > 150 * Math.round(sampleRate / 1000.0))
-				size -= this.#buffers.shift().length;
+			this.#queued += message.data.length / this.#channels;
+
+			const limit = Math.round(sampleRate * 0.5);
+			while (this.#queued > limit && this.#buffers.length > 1) {
+				const buffer = this.#buffers.shift();
+				this.#queued -= buffer.length / this.#channels;
+			}
 		}
 	}
 
@@ -29,15 +36,19 @@ class AudioProcessor extends AudioWorkletProcessor {
 				buffer = this.#buffers.shift();
 				if (!buffer)
 					break;
+				this.#queued -= buffer.length / this.#channels;
 			}
 
 			left[sample]  = buffer[index + 0] / 32768;
-			right[sample] = buffer[index + 1] / 32768;
+			right[sample] = buffer[index + Math.min(1, this.#channels - 1)] / 32768;
 			index += this.#channels;
 		}
 
-		if (buffer && buffer.length > index)
-			this.#buffers.unshift(buffer.slice(index));
+		if (buffer && buffer.length > index) {
+			const remaining = buffer.slice(index);
+			this.#queued += remaining.length / this.#channels;
+			this.#buffers.unshift(remaining);
+		}
 
 		return true;
 	}
