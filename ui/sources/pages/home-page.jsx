@@ -49,7 +49,7 @@ const sortGames = (games) => [...games].sort((left, right) => {
 		return left.installed ? -1 : 1;
 	if (left.builtin != right.builtin)
 		return left.builtin ? -1 : 1;
-	return left.name.localeCompare(right.name);
+	return left.title.localeCompare(right.title);
 });
 
 /**
@@ -75,7 +75,7 @@ const GameTile = ({ system, game, status, select }) => {
 				}
 			</span>
 			<span className="game-meta">
-				<span className="game-name">{Path.clean(game.name)}</span>
+				<span className="game-name">{Path.clean(game.title)}</span>
 				<span className="game-action">
 					{downloading ? <IonProgressBar value={status.progress} /> :
 						<IonIcon icon={available ? playOutline : cloudDownloadOutline} />

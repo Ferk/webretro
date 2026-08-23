@@ -6,7 +6,7 @@ export default class Requests {
 	static #manifest = null;
 
 	/**
-	 * @returns {Promise<{ [system: string]: string[] }>}
+	 * @returns {Promise<{ [system: string]: (string|{ rom: string, metadata?: { [key: string]: string } })[] }>}
 	 */
 	static async #getManifest() {
 		if (!this.#manifest)
@@ -20,16 +20,34 @@ export default class Requests {
 
 	/**
 	 * @param {System} system
-	 * @param {{ [system: string]: string[] }} manifest
+	 * @param {{ [system: string]: (string|{ rom: string, metadata?: { [key: string]: string } })[] }} manifest
 	 * @returns {Game[]}
 	 */
 	static #gamesFor(system, manifest) {
+		const entry = (item) => typeof item == 'string'
+			? new Game(system, item, false)
+			: new Game(system, item.rom, false, false, item.metadata);
+
 		const games = [
 			...system.builtinGames.map(rom => new Game(system, rom, true, true)),
-			...(manifest[system.name] ?? []).map(rom => new Game(system, rom, false)),
+			...(manifest[system.name] ?? []).map(entry),
 		];
 
 		return games;
+	}
+
+	/**
+	 * @param {Game} game
+	 * @param {Game} source
+	 * @returns {Game}
+	 */
+	static #withMetadata(game, source) {
+		if (!source)
+			return game;
+
+		game.metadata = source.metadata;
+		game.title = source.title;
+		return game;
 	}
 
 	/**
@@ -59,7 +77,7 @@ export default class Requests {
 			const available = this.#gamesFor(system, manifest);
 
 			system.games = [
-				...games,
+				...games.map(game => this.#withMetadata(game, available.find(item => item.rom == game.rom))),
 				...available.filter(game => !games.find(installed => game.rom == installed.rom)),
 			];
 

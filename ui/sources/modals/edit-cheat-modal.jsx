@@ -65,7 +65,7 @@ export const EditCheatModal = ({ current, systems, apply }) => {
 			{!current && <IonItem>
 				<IonSelect label="Game" interface="action-sheet" value={game} disabled={!system} onIonChange={e => setGame(e.detail.value)}>
 					{system?.games.map(game =>
-						<IonSelectOption key={game.name} value={game}>{game.name}</IonSelectOption>
+						<IonSelectOption key={game.name} value={game}>{game.title}</IonSelectOption>
 					)}
 				</IonSelect>
 			</IonItem>}

@@ -21,7 +21,7 @@ import Navigation from '../services/navigation';
 const GameCard = ({ game, status, download, play, remove }) => {
 	return (
 		<IonItem color="transparent">
-			<IonLabel>{Path.clean(game.name)}</IonLabel>
+			<IonLabel>{Path.clean(game.title)}</IonLabel>
 			{status.game == game.rom &&
 				<IonProgressBar value={status.progress}></IonProgressBar>
 			}
@@ -53,7 +53,7 @@ const GameCard = ({ game, status, download, play, remove }) => {
 export const GamesModal = ({ system, close }) => {
 	const list  = useRef(/** @type {HTMLIonListElement} */ (null));
 
-	const sort = (games) => [...games.sort((g1, g2) => g1.rom < g2.rom ? -1 : 1)];
+	const sort = (games) => [...games.sort((g1, g2) => g1.title.localeCompare(g2.title))];
 
 	const [game,   setGame]   = useState(null);
 	const [games,  setGames]  = useState(sort(system.games));
@@ -142,7 +142,7 @@ export const GamesModal = ({ system, close }) => {
 
 		alert({
 			header: 'Delete this game?',
-			message: game.name,
+			message: game.title,
 			buttons: [
 				{ text: 'Confirm', handler },
 				{ text: 'Cancel' },
