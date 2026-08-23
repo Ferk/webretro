@@ -1,0 +1,11 @@
+<game>
+  <title>FGB</title>
+  <platform>Gameboy Color</platform>
+  <genre>Puzzle</genre>
+  <year>2000</year>
+  <developer>Abe Pralle and Jacob Stevens</developer>
+  <plot>A weird and wonderful action odyssey for Game Boy Color</plot>
+  <version>1.1</version>
+  <license>MIT</license>
+  <website>https://github.com/AbePralle/FGB</website>
+</game>

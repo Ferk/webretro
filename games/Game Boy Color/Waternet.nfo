@@ -1,0 +1,11 @@
+<game> 
+  <title>Waternet</title> 
+  <platform>Game Boy / Game Boy Color</platform> 
+  <genre>Puzzle</genre> 
+  <year>2022</year> 
+  <developer>Willems Davy (joyrider3774)</developer> 
+  <plot>A multiplatform pipe-connecting puzzle game inspired by Simon Tatham's Net and Netslide, featuring Rotate, Slide, and Roslid modes alongside unlimited procedurally generated levels.</plot> 
+  <version>1.0</version> 
+  <license>MIT</license> 
+  <website>https://github.com/joyrider3774/waternet</website> 
+</game>
