@@ -23,7 +23,7 @@ export default class UIInput {
 	};
 
 	static #SELECTOR = [
-		'button:not(:disabled)',
+		'button:not(:disabled):not(.game-action-button):not(.game-name)',
 		'a[href]',
 		'ion-button:not([disabled])',
 		'ion-card[tabindex]',
@@ -138,8 +138,21 @@ export default class UIInput {
 		}
 	}
 
+	static #scope() {
+		const modals = [...document.querySelectorAll('ion-modal')]
+			.filter(element => {
+				const style = getComputedStyle(element);
+				const rect = element.getBoundingClientRect();
+				return style.visibility != 'hidden' && style.display != 'none' && rect.width > 0 && rect.height > 0;
+			});
+
+		return modals.at(-1) ?? document;
+	}
+
 	static #focusables() {
-		return [...document.querySelectorAll(this.#SELECTOR)]
+		const scope = this.#scope();
+
+		return [...scope.querySelectorAll(this.#SELECTOR)]
 			.filter(element => !element.closest('ion-page#core, ion-content.core'))
 			.filter(element => {
 				const style = getComputedStyle(element);
@@ -149,11 +162,16 @@ export default class UIInput {
 	}
 
 	static #current(items) {
-		return items.includes(document.activeElement) ? document.activeElement : null;
+		return items.includes(this.#focused) ? this.#focused : null;
 	}
 
 	static #default(items) {
-		const content = [...document.querySelectorAll('ion-content:not(.core)')]
+		const scope = this.#scope();
+		const preferred = items.find(item => item.matches('[data-gamejin-default]'));
+		if (preferred)
+			return preferred;
+
+		const content = [...scope.querySelectorAll('ion-content:not(.core)')]
 			.find(element => {
 				const rect = element.getBoundingClientRect();
 				return rect.width > 0 && rect.height > 0;

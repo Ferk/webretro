@@ -17,6 +17,9 @@ export class Game {
 	/** @type {{ [key: string]: string }} */
 	metadata;
 
+	/** @type {number} */
+	size;
+
 	/** @type {Boolean} */
 	installed;
 
@@ -29,8 +32,9 @@ export class Game {
 	 * @param {boolean} installed
 	 * @param {boolean} builtin
 	 * @param {{ [key: string]: string }} metadata
+	 * @param {number} size
 	 */
-	constructor(system, rom, installed, builtin = false, metadata = {}) {
+	constructor(system, rom, installed, builtin = false, metadata = {}, size = null) {
 		this.system = typeof system == 'string' ? system : system.name;
 		this.rom = rom;
 		this.installed = installed;
@@ -38,5 +42,6 @@ export class Game {
 		this.name = Path.name(rom);
 		this.metadata = metadata ?? {};
 		this.title = this.metadata.title || this.name;
+		this.size = size;
 	}
 }

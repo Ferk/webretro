@@ -1,4 +1,4 @@
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const [gamesDir, manifestPath] = process.argv.slice(2);
@@ -64,11 +64,16 @@ const gameEntry = async (directory, rom, files) => {
 	];
 	const nfo = names.find(name => files.has(name.toLowerCase()));
 
-	if (!nfo)
-		return rom;
+	const size = (await stat(join(directory, rom))).size;
+	const metadata = nfo ? await parseNfo(join(directory, nfo)) : {};
+	const entry = {};
 
-	const metadata = await parseNfo(join(directory, nfo));
-	return Object.keys(metadata).length ? { rom, metadata } : rom;
+	if (Object.keys(metadata).length)
+		entry.metadata = metadata;
+	if (size > 0)
+		entry.size = size;
+
+	return Object.keys(entry).length ? { rom, ...entry } : rom;
 };
 
 const manifest = {};

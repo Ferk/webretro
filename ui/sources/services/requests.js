@@ -6,7 +6,7 @@ export default class Requests {
 	static #manifest = null;
 
 	/**
-	 * @returns {Promise<{ [system: string]: (string|{ rom: string, metadata?: { [key: string]: string } })[] }>}
+	 * @returns {Promise<{ [system: string]: (string|{ rom: string, metadata?: { [key: string]: string }, size?: number })[] }>}
 	 */
 	static async #getManifest() {
 		if (!this.#manifest)
@@ -20,13 +20,13 @@ export default class Requests {
 
 	/**
 	 * @param {System} system
-	 * @param {{ [system: string]: (string|{ rom: string, metadata?: { [key: string]: string } })[] }} manifest
+	 * @param {{ [system: string]: (string|{ rom: string, metadata?: { [key: string]: string }, size?: number })[] }} manifest
 	 * @returns {Game[]}
 	 */
 	static #gamesFor(system, manifest) {
 		const entry = (item) => typeof item == 'string'
 			? new Game(system, item, false)
-			: new Game(system, item.rom, false, false, item.metadata);
+			: new Game(system, item.rom, false, false, item.metadata, item.size);
 
 		const games = [
 			...system.builtinGames.map(rom => new Game(system, rom, true, true)),
@@ -47,6 +47,7 @@ export default class Requests {
 
 		game.metadata = source.metadata;
 		game.title = source.title;
+		game.size = source.size;
 		return game;
 	}
 
