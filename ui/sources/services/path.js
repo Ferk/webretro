@@ -36,8 +36,8 @@ export default class Path {
 	 * @returns {[system: string, game: string]}
 	 */
 	static parse(path) {
-		const matches = path.match(/\/([^\/]*)\/([^\/]*)/);
-		return [ matches[1], matches[2] ];
+		const matches = path.match(/^\/([^\/]+)\/(.+)$/);
+		return [ matches?.[1], matches?.[2] ];
 	}
 
 	/**

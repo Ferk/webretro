@@ -4,17 +4,27 @@
 		"repository": "libretro-2048",
 		"makefile": "Makefile.libretro",
 		"builtinGames": ["2048"],
+		"extensions": [],
 		"systems": ["2048"]
 	},
 	"gambatte": {
 		"name": "Gambatte",
 		"repository": "gambatte-libretro",
+		"extensions": [".gb", ".gbc", ".dmg"],
+		"platformAliases": {
+			"Game Boy": ["GB", "Nintendo Game Boy"],
+			"Game Boy Color": ["GBC", "Nintendo Game Boy Color"]
+		},
 		"systems": ["Game Boy", "Game Boy Color"]
 	},
 	"mgba": {
 		"name": "mGBA",
 		"repository": "mgba",
 		"cmake": true,
+		"extensions": [".gba"],
+		"platformAliases": {
+			"Game Boy Advance": ["GBA", "Nintendo Game Boy Advance"]
+		},
 		"systems": ["Game Boy Advance"]
 	},
 	"desmume": {
@@ -23,23 +33,40 @@
 		"directory": "desmume/src/frontend/libretro",
 		"preinclude": "../../../../../desmume-wasi-compat.h",
 		"preincludeFiles": ["*/wifi.cpp", "wifi.cpp", "*/rthreads.c", "rthreads.c"],
+		"extensions": [".nds"],
+		"platformAliases": {
+			"Nintendo DS": ["NDS", "DS"]
+		},
 		"systems": ["Nintendo DS"]
 	},
 	"mesen": {
 		"name": "Mesen",
 		"repository": "Mesen",
 		"directory": "Libretro",
+		"extensions": [".nes", ".fds"],
+		"platformAliases": {
+			"NES": ["Nintendo Entertainment System", "Famicom", "FDS", "Family Computer Disk System"]
+		},
 		"systems": ["NES"]
 	},
 	"snes9x": {
 		"name": "Snes9x",
 		"directory": "libretro",
+		"extensions": [".sfc", ".smc", ".fig", ".swc"],
+		"platformAliases": {
+			"SNES": ["Super Nintendo", "Super Nintendo Entertainment System", "Super Famicom", "SFC"]
+		},
 		"systems": ["SNES"]
 	},
 	"genesis": {
 		"name": "Genesis Plus GX",
 		"repository": "Genesis-Plus-GX",
 		"makefile": "Makefile.libretro",
+		"extensions": [".sms", ".gg", ".sg", ".md", ".gen", ".smd", ".bin"],
+		"platformAliases": {
+			"Master System": ["Sega Master System", "SMS", "Game Gear", "GG", "SG-1000"],
+			"Mega Drive": ["Sega Mega Drive", "Genesis", "Sega Genesis", "MD"]
+		},
 		"systems": ["Master System", "Mega Drive"]
 	},
 	"pcsx": {
@@ -48,6 +75,10 @@
 		"makefile": "Makefile.libretro",
 		"stripEmccSettings": true,
 		"buildFlags": ["USE_MINIZ=1", "BUILTIN_GPU=peops"],
+		"extensions": [".cue", ".iso", ".chd", ".pbp", ".bin"],
+		"platformAliases": {
+			"PlayStation": ["PS1", "PSX", "Sony PlayStation"]
+		},
 		"systems": ["PlayStation"]
 	},
 	"retro8": {
@@ -55,6 +86,10 @@
 		"repository": "retro8",
 		"preinclude": "../wasi-compat.h",
 		"preincludeFiles": ["src/lua/loslib.c", "*/lua/loslib.c", "loslib.c"],
+		"extensions": [".p8", ".p8.png"],
+		"platformAliases": {
+			"PICO-8": ["PICO8", "Pico-8", "Pico8"]
+		},
 		"systems": ["PICO-8"]
 	},
 	"tic80": {
@@ -66,6 +101,10 @@
 		"defineEmscripten": false,
 		"cFlags": "-DMA_3DS -DL_tmpnam=32 -D_WASI_EMULATED_PROCESS_CLOCKS",
 		"linkFlags": ["-lwasi-emulated-process-clocks"],
+		"extensions": [".tic"],
+		"platformAliases": {
+			"TIC-80": ["TIC80", "TIC"]
+		},
 		"systems": ["TIC-80"],
 		"linkArchives": [
 			"tic80-libs/libtic80core.a",

@@ -206,7 +206,7 @@ export default class Files {
 				const metadata = Files.#cores[core];
 				const discovered = await Files.#probeCore(core);
 
-				for (const system of Files.#cores[core].systems) {
+				for (const system of metadata.platforms ?? metadata.systems) {
 					const games = stored.find(x => x.name == system)?.games ?? [];
 					const contentRequired = metadata.contentRequired ?? discovered.contentRequired;
 					const builtinGames = metadata.builtinGames ?? (!contentRequired ? [system] : []);
@@ -221,7 +221,7 @@ export default class Files {
 						blockExtract: metadata.blockExtract ?? discovered.blockExtract,
 						contentRequired,
 						builtinGames,
-						games: games.map(game => new Game(system, game.rom, false)),
+						games: games.map(game => new Game(system, game.rom, false, false, game.metadata, game.size, game.source)),
 					});
 				}
 			}
@@ -335,15 +335,21 @@ export default class Files {
 		 */
 		static async get() {
 			const systems = await Files.Library.get();
-			const paths = (await Files.list()).filter(path => path.split('/').length == 3);
+			const supports = (system, rom) => {
+				const lower = rom.toLowerCase();
+				return system.extensions.some(extension => lower.endsWith(extension.toLowerCase()));
+			};
+			const paths = await Files.list();
 
 			const files = [];
 
 			for (const path of paths) {
 				const [system_name, rom_name] = Path.parse(path);
+				if (!system_name || !rom_name)
+					continue;
 
 				const system = systems.find(x => x.name == system_name);
-				if (system)
+				if (system && supports(system, rom_name))
 					files.push(new Game(system, rom_name, true));
 			}
 

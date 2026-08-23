@@ -111,9 +111,8 @@ export const GamesModal = ({ system, close }) => {
 		setStatus({ game: game.rom, progress: 0 });
 
 		try {
-			const systemPath = encodeURIComponent(system.name);
-			const romPath = game.rom.split('/').map(encodeURIComponent).join('/');
-			const response = await fetch(`games/${systemPath}/${romPath}`);
+			const source = game.source ?? `${system.name}/${game.rom}`;
+			const response = await fetch(`games/${source.split('/').map(encodeURIComponent).join('/')}`);
 			if (!response.ok)
 				throw new Error(`Download failed: ${response.status} ${response.statusText}`);
 			if (!response.body)

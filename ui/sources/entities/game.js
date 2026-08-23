@@ -9,6 +9,9 @@ export class Game {
 	rom;
 
 	/** @type {String} */
+	source;
+
+	/** @type {String} */
 	name;
 
 	/** @type {String} */
@@ -33,10 +36,12 @@ export class Game {
 	 * @param {boolean} builtin
 	 * @param {{ [key: string]: string }} metadata
 	 * @param {number} size
+	 * @param {string} source
 	 */
-	constructor(system, rom, installed, builtin = false, metadata = {}, size = null) {
+	constructor(system, rom, installed, builtin = false, metadata = {}, size = null, source = null) {
 		this.system = typeof system == 'string' ? system : system.name;
 		this.rom = rom;
+		this.source = source;
 		this.installed = installed;
 		this.builtin = builtin;
 		this.name = Path.name(rom);

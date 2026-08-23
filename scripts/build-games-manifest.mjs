@@ -1,16 +1,34 @@
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, dirname, join, relative, sep } from 'node:path';
 
 const [gamesDir, manifestPath] = process.argv.slice(2);
 
-const extensions = new Set([
-	'.gb', '.gbc', '.gba', '.nds', '.nes', '.fds',
-	'.sfc', '.smc', '.fig', '.swc',
-	'.sms', '.gg', '.sg', '.md', '.gen', '.smd',
-	'.bin', '.cue', '.iso', '.chd', '.pbp',
-	'.n64', '.z64', '.v64',
-	'.p8', '.p8.png', '.tic',
-]);
+const cores = JSON.parse(await readFile('cores/cores.json', 'utf8'));
+const extensions = new Set(Object.values(cores).flatMap(core => core.extensions ?? []));
+const platforms = new Map();
+const platformNames = new Set();
+
+const normalize = (name) => name
+	?.toLowerCase()
+	.normalize('NFKD')
+	.replace(/[^\p{Letter}\p{Number}]+/gu, '');
+
+for (const core of Object.values(cores)) {
+	for (const platform of core.platforms ?? core.systems ?? []) {
+		const name = typeof platform == 'string' ? platform : platform.name;
+		const aliases = typeof platform == 'string' ? [] : platform.aliases ?? [];
+
+		platformNames.add(name);
+		for (const alias of [name, ...aliases])
+			platforms.set(normalize(alias), name);
+	}
+
+	for (const [name, aliases] of Object.entries(core.platformAliases ?? {})) {
+		platformNames.add(name);
+		for (const alias of [name, ...aliases])
+			platforms.set(normalize(alias), name);
+	}
+}
 
 const isGame = (name) => {
 	const lower = name.toLowerCase();
@@ -57,41 +75,90 @@ const gameBaseName = (name) => {
 	return extension ? name.slice(0, -extension.length) : name;
 };
 
-const gameEntry = async (directory, rom, files) => {
-	const names = [
-		`${gameBaseName(rom)}.nfo`,
-		`${rom}.nfo`,
-	];
-	const nfo = names.find(name => files.has(name.toLowerCase()));
+const findNfo = (rom, files) => [
+	`${gameBaseName(rom)}.nfo`,
+	`${rom}.nfo`,
+].find(name => files.has(name.toLowerCase()));
 
-	const size = (await stat(join(directory, rom))).size;
+const directoryFiles = async (directory) => new Set((await readdir(directory, { withFileTypes: true }))
+	.filter(file => file.isFile())
+	.map(file => file.name.toLowerCase()));
+
+const sourcePath = (path) => relative(gamesDir, path).split(sep).join('/');
+
+const platformFromPath = (path) => {
+	const parts = dirname(sourcePath(path)).split('/').filter(Boolean);
+
+	for (let index = parts.length - 1; index >= 0; index--) {
+		const platform = platforms.get(normalize(parts[index]));
+		if (platform)
+			return { platform, root: parts.slice(0, index + 1).join('/') };
+	}
+
+	return null;
+};
+
+const gameEntry = async (path) => {
+	const directory = dirname(path);
+	const rom = basename(path);
+	const files = await directoryFiles(directory);
+	const nfo = findNfo(rom, files);
+
+	const size = (await stat(path)).size;
 	const metadata = nfo ? await parseNfo(join(directory, nfo)) : {};
+	const pathPlatform = platformFromPath(path);
+	const platform = platforms.get(normalize(metadata.platform)) ?? pathPlatform?.platform;
+	if (!platform)
+		return null;
+
+	const source = sourcePath(path);
+	const root = pathPlatform?.root;
+	const romPath = root && source.startsWith(`${root}/`)
+		? source.slice(root.length + 1)
+		: source;
 	const entry = {};
 
 	if (Object.keys(metadata).length)
 		entry.metadata = metadata;
 	if (size > 0)
 		entry.size = size;
+	if (source != `${platform}/${romPath}`)
+		entry.source = source;
 
-	return Object.keys(entry).length ? { rom, ...entry } : rom;
+	return {
+		platform,
+		entry: Object.keys(entry).length ? { rom: romPath, ...entry } : romPath,
+	};
+};
+
+const scan = async (directory) => {
+	const games = [];
+
+	for (const file of await readdir(directory, { withFileTypes: true })) {
+		const path = join(directory, file.name);
+		if (file.isDirectory())
+			games.push(...await scan(path));
+		else if (file.isFile() && isGame(file.name))
+			games.push(path);
+	}
+
+	return games;
 };
 
 const manifest = {};
 
 try {
-	for (const system of await readdir(gamesDir, { withFileTypes: true })) {
-		if (!system.isDirectory())
-			continue;
+	for (const platform of platformNames)
+		manifest[platform] = [];
 
-		const directory = join(gamesDir, system.name);
-		const files = await readdir(directory, { withFileTypes: true });
-		const fileNames = new Set(files.filter(file => file.isFile()).map(file => file.name.toLowerCase()));
-		manifest[system.name] = await Promise.all(files
-			.filter(file => file.isFile() && isGame(file.name))
-			.map(file => file.name)
-			.sort((left, right) => left.localeCompare(right))
-			.map(rom => gameEntry(directory, rom, fileNames)));
+	for (const game of await Promise.all((await scan(gamesDir)).sort((left, right) => left.localeCompare(right)).map(gameEntry))) {
+		if (game)
+			manifest[game.platform].push(game.entry);
 	}
+
+	for (const platform of Object.keys(manifest))
+		if (!manifest[platform].length)
+			delete manifest[platform];
 } catch (error) {
 	if (error.code != 'ENOENT')
 		throw error;

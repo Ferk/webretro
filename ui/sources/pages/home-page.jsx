@@ -24,9 +24,12 @@ const stripExtension = (rom) => rom.replace(/\.[^/.]+$/, '');
  * @returns {string[]}
  */
 const thumbnailCandidates = (system, game) => {
-	const prefix = `games/${encodeURIComponent(system.name)}/`;
-	const base = encodePath(stripExtension(game.rom));
-	const rom = encodePath(game.rom);
+	const source = game.source ?? `${system.name}/${game.rom}`;
+	const directory = source.includes('/') ? `${source.slice(0, source.lastIndexOf('/'))}/` : '';
+	const filename = source.includes('/') ? source.slice(source.lastIndexOf('/') + 1) : source;
+	const prefix = `games/${encodePath(directory)}`;
+	const base = encodePath(stripExtension(filename));
+	const rom = encodePath(filename);
 
 	return [
 		`${prefix}${base}.png`,
@@ -269,7 +272,7 @@ export const HomePage = () => {
 		let installed = false;
 
 		try {
-			const response = await fetch(`games/${encodeURIComponent(system.name)}/${encodePath(game.rom)}`);
+			const response = await fetch(`games/${encodePath(game.source ?? `${system.name}/${game.rom}`)}`);
 			if (!response.ok)
 				throw new Error(`Download failed: ${response.status} ${response.statusText}`);
 			if (!response.body)
@@ -287,7 +290,7 @@ export const HomePage = () => {
 	};
 
 	const installDetailsGame = (system, game) => {
-		const installed = new Game(system, game.rom, true, game.builtin, game.metadata, game.size);
+		const installed = new Game(system, game.rom, true, game.builtin, game.metadata, game.size, game.source);
 		setDetailsGame(installed);
 	};
 
