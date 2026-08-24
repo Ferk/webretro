@@ -39,6 +39,17 @@
 		},
 		"systems": ["Nintendo DS"]
 	},
+	"dosbox": {
+		"name": "DOSBox Pure",
+		"repository": "dosbox-pure",
+		"outputVariable": "OUTNAME",
+		"extensions": [".zip", ".dosz", ".exe", ".com", ".bat", ".iso", ".chd", ".cue", ".ins", ".img", ".ima", ".vhd", ".jrc", ".m3u", ".m3u8", ".conf"],
+		"platformAliases": {
+			"DOS": ["DOSBox", "DOSBox Pure", "MS-DOS", "PC", "IBM PC", "DOS Games"]
+		},
+		"systems": ["DOS"],
+		"builtinGames": []
+	},
 	"mesen": {
 		"name": "Mesen",
 		"repository": "Mesen",

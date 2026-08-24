@@ -311,6 +311,14 @@ export default class WASI {
 					? this.#WASI_ERRNO_NOENT
 					: this.#WASI_ERRNO_SUCCESS;
 			},
+			path_rename: (old_fd, old_path, old_path_len, new_fd, new_path, new_path_len) => {
+				const old_file = this.#str_to_js(old_path, old_path_len);
+				const new_file = this.#str_to_js(new_path, new_path_len);
+
+				return this.#filesystem.rename(old_file, new_file) == -1
+					? this.#WASI_ERRNO_NOENT
+					: this.#WASI_ERRNO_SUCCESS;
+			},
 			poll_oneoff: (in_, out_, nsubscriptions, nevents) => {
 				if (this.#get_uint32(in_ + 8) == this.#WASI_EVENTTYPE_CLOCK)
 					Atomics.wait(this.#sab, 0, 0, Number(this.#get_uint64(in_ + 24)) / 1000000);

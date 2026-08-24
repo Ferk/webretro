@@ -188,6 +188,26 @@ export default class Filesystem {
 	}
 
 	/**
+	 * @param {string} old_path
+	 * @param {string} new_path
+	 * @returns {number | Promise<number>}
+	 */
+	rename(old_path, new_path) {
+		return Filesystem.#catch(async () => {
+			const data = await this.readFile(old_path);
+			if (!data)
+				return -1;
+
+			const written = await this.write(new_path, data, 0);
+			if (written == -1)
+				return -1;
+
+			await this.remove(old_path);
+			return 0;
+		}, -1);
+	}
+
+	/**
 	 * @param {string} path
 	 * @returns {void | Promise<void>}
 	 */

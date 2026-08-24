@@ -35,3 +35,6 @@
 	path = cores/desmume
 	url = https://github.com/Namaneo/desmume.git
 	branch = advsc_has-database
+[submodule "cores/dosbox-pure"]
+	path = cores/dosbox-pure
+	url = https://github.com/schellingb/dosbox-pure

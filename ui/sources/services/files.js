@@ -64,6 +64,7 @@ export default class Files {
 			mkdir: () => -1,
 			rmdir: () => -1,
 			remove: () => -1,
+			rename: () => -1,
 		};
 		const wasi = new WASI(memory, filesystem);
 

@@ -33,6 +33,7 @@ lib%.a: fetch-%
 	name=`jq -r '."$*".repository // "$*"' cores.json` && \
 	makedir=`jq -r '."$*".directory // ""' cores.json` && \
 	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
+	output_variable=`jq -r '."$*".outputVariable // "TARGET"' cores.json` && \
 	cmake=`jq -r '."$*".cmake // false' cores.json` && \
 	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
 	cmake_flags=`jq -r '."$*".cmakeFlags[]? // empty' cores.json` && \
@@ -68,6 +69,8 @@ lib%.a: fetch-%
 		cc="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cc"; \
 		cxx="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cxx"; \
 	fi && \
+	target_arg="TARGET=$$target" && \
+	if test "$$output_variable" != TARGET; then target_arg="$$target_arg $$output_variable=$$target"; fi && \
 	echo Building lib$*.a... && \
 	if test "$$cmake" = true; then \
 		builddir=`pwd`/../build/cores/$$name && \
@@ -105,7 +108,7 @@ lib%.a: fetch-%
 		find $$builddir -name "$*_libretro*.a" -print -quit | xargs -r cp -f -t `pwd` && \
 		cp -f `pwd`/$*_libretro*.a $$target; \
 	else \
-		$(MAKE) -C $$name/$$makedir -f $$makefile TARGET=$$target \
+		$(MAKE) -C $$name/$$makedir -f $$makefile $$target_arg \
 			$(BUILD_JOBS) HAVE_OPENGL=0 STATIC_LINKING=1 AR="$$ar" RANLIB="$$ranlib" \
 			platform=$$platform CC="$$cc" CXX="$$cxx" \
 			$$flag_args $$extra_flags $(QUIET); \
@@ -125,6 +128,7 @@ clean-%: clear-%
 	fi && \
 	makedir=`jq -r '."$*".directory // ""' cores.json` && \
 	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
+	output_variable=`jq -r '."$*".outputVariable // "TARGET"' cores.json` && \
 	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
 	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
 	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
@@ -152,8 +156,10 @@ clean-%: clear-%
 		cc="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cc"; \
 		cxx="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cxx"; \
 	fi && \
+	target_arg="TARGET=$$target" && \
+	if test "$$output_variable" != TARGET; then target_arg="$$target_arg $$output_variable=$$target"; fi && \
 	test ! -d $$name || \
-	$(MAKE) -C $$name/$$makedir -f $$makefile clean TARGET=$$target \
+	$(MAKE) -C $$name/$$makedir -f $$makefile clean $$target_arg \
 		HAVE_OPENGL=0 STATIC_LINKING=1 AR="$$ar" RANLIB="$$ranlib" \
 		platform=$$platform CC="$$cc" CXX="$$cxx" \
 		$$flag_args $$extra_flags $(QUIET)
