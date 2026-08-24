@@ -9,6 +9,13 @@ import Files from '../services/files';
 import Path from '../services/path';
 import Navigation from '../services/navigation';
 
+const encodePath = (path) => path.split('/').map(encodeURIComponent).join('/');
+
+const gameUrl = (system, game) => {
+	const source = game.source ?? `${system.name}/${game.rom}`;
+	return /^https?:\/\//i.test(source) ? source : `games/${encodePath(source)}`;
+};
+
 /**
  * @param {Object} parameters
  * @param {Game} parameters.game
@@ -111,8 +118,7 @@ export const GamesModal = ({ system, close }) => {
 		setStatus({ game: game.rom, progress: 0 });
 
 		try {
-			const source = game.source ?? `${system.name}/${game.rom}`;
-			const response = await fetch(`games/${source.split('/').map(encodeURIComponent).join('/')}`);
+			const response = await fetch(gameUrl(system, game));
 			if (!response.ok)
 				throw new Error(`Download failed: ${response.status} ${response.statusText}`);
 			if (!response.body)

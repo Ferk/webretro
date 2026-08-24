@@ -14,6 +14,13 @@ export default class Path {
 	}
 
 	/**
+	 * @returns {string}
+	 */
+	static sources() {
+		return '/sources.json';
+	}
+
+	/**
 	 * @param {string} system
 	 * @param {string} game
 	 * @returns {string}

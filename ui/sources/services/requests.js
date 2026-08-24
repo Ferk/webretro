@@ -15,6 +15,13 @@ export default class Requests {
 
 	static #decoder = document.createElement('textarea');
 
+	static #mergeManifest(target, source) {
+		for (const [platform, games] of Object.entries(source ?? {}))
+			target[platform] = [...target[platform] ?? [], ...games];
+
+		return target;
+	}
+
 	static #normalize(name) {
 		return name
 			?.toLowerCase()
@@ -61,6 +68,26 @@ export default class Requests {
 		return [...this.#extensions].some(extension => lower.endsWith(extension.toLowerCase()));
 	}
 
+	static async supportsGame(path) {
+		await this.#getPlatformData();
+		return this.#isGame(path);
+	}
+
+	static #platformFromExtension(path) {
+		const lower = path.toLowerCase();
+		const matches = [];
+
+		for (const games of Object.values(this.#cores)) {
+			for (const system of games.platforms ?? games.systems ?? []) {
+				const name = typeof system == 'string' ? system : system.name;
+				if ((games.extensions ?? []).some(extension => lower.endsWith(extension.toLowerCase())))
+					matches.push(name);
+			}
+		}
+
+		return [...new Set(matches)].length == 1 ? matches[0] : null;
+	}
+
 	static #gameBaseName(name) {
 		const lower = name.toLowerCase();
 		const extension = [...this.#extensions]
@@ -99,38 +126,38 @@ export default class Requests {
 		return metadata;
 	}
 
-	static #listingLinks(base, html) {
+	static #listingLinks(base, html, root = 'games/') {
 		const document = new DOMParser().parseFromString(html, 'text/html');
 		const baseUrl = new URL(base, window.location.href);
+		const rootUrl = new URL(root, window.location.href);
 
 		return [...document.querySelectorAll('a[href]')]
 			.map(anchor => new URL(anchor.getAttribute('href'), baseUrl))
-			.filter(url => url.origin == window.location.origin)
 			.filter(url => url.pathname.startsWith(baseUrl.pathname))
 			.filter(url => url.pathname != baseUrl.pathname)
 			.map(url => ({
 				url,
-				path: decodeURIComponent(url.pathname.slice(new URL('games/', window.location.href).pathname.length)),
+				path: decodeURIComponent(url.pathname.slice(rootUrl.pathname.length)),
 				directory: url.pathname.endsWith('/'),
 			}));
 	}
 
-	static async #readListing(path) {
+	static async #readListing(path, root = 'games/') {
 		const response = await fetch(path, { cache: 'no-cache' });
 		if (!response.ok || !response.headers.get('Content-Type')?.includes('text/html'))
 			return [];
 
 		const html = await response.text();
-		return this.#listingLinks(path, html);
+		return this.#listingLinks(path, html, root);
 	}
 
-	static async #scanListings(path = 'games/') {
-		const entries = await this.#readListing(path);
+	static async #scanListings(path = 'games/', root = path) {
+		const entries = await this.#readListing(path, root);
 		const files = [];
 
 		for (const entry of entries) {
 			if (entry.directory)
-				files.push(...await this.#scanListings(entry.url.pathname));
+				files.push(...await this.#scanListings(entry.url.href, root));
 			else
 				files.push(entry.path);
 		}
@@ -138,7 +165,7 @@ export default class Requests {
 		return files;
 	}
 
-	static async #fetchNfo(path) {
+	static async #fetchNfo(path, root = 'games/') {
 		const directory = path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) : '';
 		const rom = path.slice(directory.length);
 		const candidates = [
@@ -147,7 +174,7 @@ export default class Requests {
 		];
 
 		for (const candidate of candidates) {
-			const response = await fetch(`games/${candidate.split('/').map(encodeURIComponent).join('/')}`, { cache: 'no-cache' });
+			const response = await fetch(new URL(candidate.split('/').map(encodeURIComponent).join('/'), root), { cache: 'no-cache' });
 			if (response.ok && !response.headers.get('Content-Type')?.includes('text/html'))
 				return this.#parseNfo(await response.text());
 		}
@@ -167,21 +194,20 @@ export default class Requests {
 		return null;
 	}
 
-	static async #listingEntry(path) {
-		const metadata = await this.#fetchNfo(path);
+	static async #listingEntry(path, root = 'games/') {
+		const metadata = await this.#fetchNfo(path, root);
 		const pathPlatform = this.#platformFromPath(path);
-		const platform = this.#platforms.get(this.#normalize(metadata.platform)) ?? pathPlatform?.platform;
+		const platform = this.#platforms.get(this.#normalize(metadata.platform)) ?? pathPlatform?.platform ?? this.#platformFromExtension(path);
 		if (!platform)
 			return null;
 
-		const root = pathPlatform?.root;
-		const rom = root && path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path;
+		const platformRoot = pathPlatform?.root;
+		const rom = platformRoot && path.startsWith(`${platformRoot}/`) ? path.slice(platformRoot.length + 1) : path;
 		const entry = {};
 
 		if (Object.keys(metadata).length)
 			entry.metadata = metadata;
-		if (path != `${platform}/${rom}`)
-			entry.source = path;
+		entry.source = new URL(path.split('/').map(encodeURIComponent).join('/'), root).href;
 
 		return {
 			platform,
@@ -189,18 +215,18 @@ export default class Requests {
 		};
 	}
 
-	static async #getListingManifest() {
+	static async #getListingManifest(root = 'games/') {
 		await this.#getPlatformData();
 
 		const manifest = {};
 		for (const platform of this.#platformNames)
 			manifest[platform] = [];
 
-		const games = (await this.#scanListings())
+		const games = (await this.#scanListings(root, root))
 			.filter(path => this.#isGame(path))
 			.sort((left, right) => left.localeCompare(right));
 
-		for (const game of await Promise.all(games.map(path => this.#listingEntry(path)))) {
+		for (const game of await Promise.all(games.map(path => this.#listingEntry(path, root)))) {
 			if (game)
 				manifest[game.platform].push(game.entry);
 		}
@@ -212,17 +238,105 @@ export default class Requests {
 		return manifest;
 	}
 
+	static #sourcePath(base, platform, rom, source) {
+		const path = source ?? `${platform}/${rom}`;
+		return /^https?:\/\//i.test(path) ? path : new URL(path.split('/').map(encodeURIComponent).join('/'), base).href;
+	}
+
+	static #resolveManifest(base, manifest) {
+		const resolved = {};
+
+		for (const [platform, games] of Object.entries(manifest ?? {})) {
+			resolved[platform] = games.map(game => {
+				if (typeof game == 'string')
+					return { rom: game, source: this.#sourcePath(base, platform, game) };
+
+				return {
+					...game,
+					source: this.#sourcePath(base, platform, game.rom, game.source),
+				};
+			});
+		}
+
+		return resolved;
+	}
+
+	static async #getUrlManifest(source) {
+		const url = new URL(source);
+		const response = await fetch(url, { cache: 'no-cache' });
+		if (!response.ok)
+			throw new Error(`Source failed: ${response.status} ${response.statusText}`);
+
+		const type = response.headers.get('Content-Type') ?? '';
+		if (type.includes('application/json') || url.pathname.endsWith('.json'))
+			return this.#resolveManifest(url.href.slice(0, url.href.lastIndexOf('/') + 1), await response.json());
+
+		if (type.includes('text/html') || url.pathname.endsWith('/'))
+			return await this.#getListingManifest(url.href.endsWith('/') ? url.href : `${url.href}/`);
+
+		await this.#getPlatformData();
+		const path = decodeURIComponent(url.pathname.split('/').pop());
+		if (!this.#isGame(path))
+			return {};
+
+		const game = await this.#listingEntry(path, url.href.slice(0, url.href.lastIndexOf('/') + 1));
+		return game ? { [game.platform]: [game.entry] } : {};
+	}
+
+	static async sourceType(source) {
+		const url = new URL(source);
+		const response = await fetch(url, { cache: 'no-cache' });
+		if (!response.ok)
+			throw new Error(`Source failed: ${response.status} ${response.statusText}`);
+
+		const type = response.headers.get('Content-Type') ?? '';
+		const collection = type.includes('application/json') || type.includes('text/html') || url.pathname.endsWith('.json') || url.pathname.endsWith('/');
+		return {
+			collection,
+			response,
+		};
+	}
+
+	static async #getSourcesManifest() {
+		const manifest = {};
+
+		for (const source of await Files.Sources.get()) {
+			try {
+				this.#mergeManifest(manifest, await this.#getUrlManifest(source.url));
+			} catch (error) {
+				console.error(error);
+			}
+		}
+
+		return manifest;
+	}
+
 	/**
 	 * @returns {Promise<{ [system: string]: (string|{ rom: string, source?: string, metadata?: { [key: string]: string }, size?: number })[] }>}
 	 */
 	static async #getManifest() {
-		if (!this.#manifest)
-			this.#manifest = await fetch('games.json', { cache: 'no-cache' }).then(res => res.ok ? res.json() : this.#getListingManifest()).catch(error => {
+		if (!this.#manifest) {
+			const bundled = await fetch('games.json', { cache: 'no-cache' }).then(res => res.ok ? res.json() : this.#getListingManifest()).catch(error => {
 				console.error(error);
 				return this.#getListingManifest();
 			});
+			this.#manifest = this.#mergeManifest(bundled, await this.#getSourcesManifest());
+		}
 
 		return this.#manifest;
+	}
+
+	/**
+	 * @param {string} url
+	 * @returns {Promise<{ [system: string]: (string|{ rom: string, source?: string, metadata?: { [key: string]: string }, size?: number })[] }>}
+	 */
+	static async scanSource(url) {
+		return await this.#getUrlManifest(url);
+	}
+
+	static async countSource(url) {
+		const manifest = await this.scanSource(url);
+		return Object.values(manifest).reduce((total, games) => total + games.length, 0);
 	}
 
 	/**

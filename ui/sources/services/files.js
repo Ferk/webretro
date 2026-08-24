@@ -255,6 +255,23 @@ export default class Files {
 		}
 	}
 
+	static Sources = class {
+		/**
+		 * @returns {Promise<{ url: string, games?: number }[]>}
+		 */
+		static async get() {
+			return await Files.read_json(Path.sources()) ?? [];
+		};
+
+		/**
+		 * @param {{ url: string, games?: number }[]} sources
+		 * @returns {Promise<void>}
+		 */
+		static async update(sources) {
+			await Files.write_json(Path.sources(), sources);
+		}
+	}
+
 	static Saves = class {
 		/**
 		 * @returns {Promise<Save[]>}

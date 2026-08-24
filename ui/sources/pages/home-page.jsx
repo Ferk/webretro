@@ -1,6 +1,7 @@
 import { IonButton, IonButtons, IonContent, IonHeader, IonIcon, IonImg, IonLoading, IonPage, IonProgressBar, IonTitle, IonToolbar, useIonAlert, useIonModal, useIonViewWillEnter } from '@ionic/react';
-import { closeOutline, cloudDownloadOutline, imageOutline, informationCircleOutline, playOutline, refreshOutline } from 'ionicons/icons';
+import { addOutline, closeOutline, cloudDownloadOutline, imageOutline, informationCircleOutline, playOutline, refreshOutline } from 'ionicons/icons';
 import { useEffect, useRef, useState } from 'react';
+import { AddGamesModal } from '../modals/add-games-modal';
 import { CoreModal } from '../modals/core-modal';
 import { Game } from '../entities/game';
 import { System } from '../entities/system';
@@ -11,6 +12,31 @@ import Requests from '../services/requests';
 import { useToast } from '../hooks/toast';
 
 const encodePath = (path) => path.split('/').map(encodeURIComponent).join('/');
+
+const gameUrl = (system, game) => {
+	const source = game.source ?? `${system.name}/${game.rom}`;
+	return /^https?:\/\//i.test(source) ? source : `games/${encodePath(source)}`;
+};
+
+const sourceParts = (system, game) => {
+	const source = game.source ?? `${system.name}/${game.rom}`;
+
+	if (/^https?:\/\//i.test(source)) {
+		const url = new URL(source);
+		const filename = decodeURIComponent(url.pathname.slice(url.pathname.lastIndexOf('/') + 1));
+		return {
+			remote: true,
+			directory: source.slice(0, source.lastIndexOf('/') + 1),
+			filename,
+		};
+	}
+
+	return {
+		remote: false,
+		directory: source.includes('/') ? `${source.slice(0, source.lastIndexOf('/'))}/` : '',
+		filename: source.includes('/') ? source.slice(source.lastIndexOf('/') + 1) : source,
+	};
+};
 
 /**
  * @param {string} rom
@@ -24,22 +50,20 @@ const stripExtension = (rom) => rom.replace(/\.[^/.]+$/, '');
  * @returns {string[]}
  */
 const thumbnailCandidates = (system, game) => {
-	const source = game.source ?? `${system.name}/${game.rom}`;
-	const directory = source.includes('/') ? `${source.slice(0, source.lastIndexOf('/'))}/` : '';
-	const filename = source.includes('/') ? source.slice(source.lastIndexOf('/') + 1) : source;
-	const prefix = `games/${encodePath(directory)}`;
-	const base = encodePath(stripExtension(filename));
-	const rom = encodePath(filename);
+	const source = sourceParts(system, game);
+	const prefix = source.remote ? source.directory : `games/${encodePath(source.directory)}`;
+	const url = (name) => source.remote ? new URL(encodeURIComponent(name), prefix).href : `${prefix}${encodeURIComponent(name)}`;
+	const base = stripExtension(source.filename);
 
 	return [
-		`${prefix}${base}.png`,
-		`${prefix}${base}.jpg`,
-		`${prefix}${base}.jpeg`,
-		`${prefix}${base}.webp`,
-		`${prefix}${rom}.png`,
-		`${prefix}${rom}.jpg`,
-		`${prefix}${rom}.jpeg`,
-		`${prefix}${rom}.webp`,
+		url(`${base}.png`),
+		url(`${base}.jpg`),
+		url(`${base}.jpeg`),
+		url(`${base}.webp`),
+		url(`${source.filename}.png`),
+		url(`${source.filename}.jpg`),
+		url(`${source.filename}.jpeg`),
+		url(`${source.filename}.webp`),
 	];
 };
 
@@ -204,6 +228,7 @@ const GameDetailsModal = ({ system, game, status, close, action }) => {
 export const HomePage = () => {
 	const modal = useRef(/** @type {() => void} */ (null));
 	const details = useRef(/** @type {() => void} */ (null));
+	const addGames = useRef(/** @type {() => void} */ (null));
 
 	const [systems, setSystems] = useState(/** @type {System[]} */ ([]));
 	const [system,  setSystem]  = useState(/** @type {System}   */ (null));
@@ -221,6 +246,11 @@ export const HomePage = () => {
 		status,
 		close: () => closeDetails(),
 		action: (system, game) => runGameAction(system, game),
+	});
+	const [showAddGames, hideAddGames] = useIonModal(AddGamesModal, {
+		systems,
+		close: () => closeAddGames(),
+		update: () => update(),
 	});
 
 	const version = window.gamejin_build.split('-')[0];
@@ -242,6 +272,12 @@ export const HomePage = () => {
 		details.current?.();
 		details.current = null;
 		hideDetails();
+	};
+
+	const closeAddGames = () => {
+		addGames.current?.();
+		addGames.current = null;
+		hideAddGames();
 	};
 
 	const play = (system, game) => {
@@ -272,7 +308,7 @@ export const HomePage = () => {
 		let installed = false;
 
 		try {
-			const response = await fetch(`games/${encodePath(game.source ?? `${system.name}/${game.rom}`)}`);
+			const response = await fetch(gameUrl(system, game));
 			if (!response.ok)
 				throw new Error(`Download failed: ${response.status} ${response.statusText}`);
 			if (!response.body)
@@ -320,6 +356,11 @@ export const HomePage = () => {
 		setLoading(false);
 	}
 
+	const openAddGames = () => {
+		showAddGames({ cssClass: 'add-games-modal' });
+		addGames.current = Navigation.push(closeAddGames);
+	};
+
 	useIonViewWillEnter(update);
 
 	return (
@@ -329,6 +370,9 @@ export const HomePage = () => {
 				<IonToolbar>
 					<IonTitle>Games</IonTitle>
 					<IonButtons slot="end">
+						<IonButton onClick={openAddGames}>
+							<IonIcon slot="icon-only" icon={addOutline} />
+						</IonButton>
 						<IonButton onClick={() => present(date)}>
 							<IonIcon slot="icon-only" icon={informationCircleOutline} />
 						</IonButton>
