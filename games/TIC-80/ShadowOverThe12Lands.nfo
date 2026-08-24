@@ -1,0 +1,12 @@
+<game>
+  <title>Shadow Over The Twelve Lands</title>
+  <platform>TIC-80</platform>
+  <genre>RPG</genre>
+  <developer>Bruno Oliveira</developer>
+  <plot>
+Retro CRPG game where you control a party of adventurers through an epic quest that starts out with a small mistake where you essentially doom the entire world to a decade of disasters but worry not, because you are going to fix things now and defeat the great evil you unleashed upon the world.
+  </plot>
+  <version>43023d0</version>
+  <license>Apache License 2.0</license>
+  <website>https://btco.itch.io/shadow-over-the-twelve-lands</website>
+</game>
