@@ -92,11 +92,13 @@
 		},
 		"systems": ["PlayStation"]
 	},
-	"retro8": {
-		"name": "Retro8",
-		"repository": "retro8",
-		"preinclude": "../wasi-compat.h",
-		"preincludeFiles": ["src/lua/loslib.c", "*/lua/loslib.c", "loslib.c"],
+	"fake08": {
+		"name": "Fake-08",
+		"repository": "fake-08",
+		"directory": "platform/libretro",
+		"compilerFlags": ["-fno-exceptions"],
+		"preinclude": "../../../wasi-compat.h",
+		"preincludeFiles": ["*/z8lua/ldo.c", "*/z8lua/loslib.c", "ldo.c", "loslib.c"],
 		"extensions": [".p8", ".p8.png"],
 		"platformAliases": {
 			"PICO-8": ["PICO8", "Pico-8", "Pico8"]

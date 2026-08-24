@@ -40,6 +40,7 @@ lib%.a: fetch-%
 	cmake_c_flags='$(DEFINES)' && \
 	cmake_cxx_flags='$(DEFINES)' && \
 	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
+	compiler_flags=`jq -r '."$*".compilerFlags[]? // empty' cores.json` && \
 	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
 	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
 	preinclude=`jq -r '."$*".preinclude // ""' cores.json` && \
@@ -64,6 +65,10 @@ lib%.a: fetch-%
 	if test "`jq -r '."$*".stripEmccSettings // false' cores.json`" = true; then \
 		cc="`pwd`/../scripts/wasi-filter-cc $$cc"; \
 		cxx="`pwd`/../scripts/wasi-filter-cc $$cxx"; \
+	fi && \
+	if test -n "$$compiler_flags"; then \
+		cc="$$cc $$compiler_flags"; \
+		cxx="$$cxx $$compiler_flags"; \
 	fi && \
 	if test -n "$$preinclude"; then \
 		cc="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cc"; \
@@ -131,6 +136,7 @@ clean-%: clear-%
 	output_variable=`jq -r '."$*".outputVariable // "TARGET"' cores.json` && \
 	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
 	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
+	compiler_flags=`jq -r '."$*".compilerFlags[]? // empty' cores.json` && \
 	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
 	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
 	preinclude=`jq -r '."$*".preinclude // ""' cores.json` && \
@@ -151,6 +157,10 @@ clean-%: clear-%
 	if test "`jq -r '."$*".stripEmccSettings // false' cores.json`" = true; then \
 		cc="`pwd`/../scripts/wasi-filter-cc $$cc"; \
 		cxx="`pwd`/../scripts/wasi-filter-cc $$cxx"; \
+	fi && \
+	if test -n "$$compiler_flags"; then \
+		cc="$$cc $$compiler_flags"; \
+		cxx="$$cxx $$compiler_flags"; \
 	fi && \
 	if test -n "$$preinclude"; then \
 		cc="sh `pwd`/../scripts/wasi-preinclude-cc $$preinclude $$preinclude_files $$cc"; \

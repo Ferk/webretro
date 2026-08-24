@@ -16,9 +16,6 @@
 [submodule "cores/Mesen"]
 	path = cores/Mesen
 	url = https://github.com/libretro/Mesen.git
-[submodule "cores/retro8"]
-	path = cores/retro8
-	url = https://github.com/libretro/retro8.git
 [submodule "cores/snes9x"]
 	path = cores/snes9x
 	url = https://github.com/libretro/snes9x.git
@@ -38,3 +35,6 @@
 [submodule "cores/dosbox-pure"]
 	path = cores/dosbox-pure
 	url = https://github.com/schellingb/dosbox-pure
+[submodule "cores/fake-08"]
+	path = cores/fake-08
+	url = https://github.com/jtothebell/fake-08.git
