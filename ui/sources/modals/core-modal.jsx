@@ -259,17 +259,12 @@ export const CoreModal = ({ system, game, close }) => {
 	useEffect(() => {
 		let frame = 0;
 		let stopped = false;
-		let polling = false;
 
 		const poll = () => {
-			if (!polling) {
-				const messages = hardware.current.gamepad();
+			const messages = hardware.current.gamepad();
 
-				if (messages.length) {
-					polling = true;
-					core.current.input(messages).finally(() => polling = false);
-				}
-			}
+			if (messages.length)
+				core.current.input(messages);
 
 			if (!stopped)
 				frame = requestAnimationFrame(poll);

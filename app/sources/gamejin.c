@@ -813,10 +813,27 @@ void GamejinSetSpeed(uint8_t speed)
 
 void GamejinSetInput(GamejinInputDevice device, GamejinInputID id, int16_t value)
 {
-	if (device == RETRO_DEVICE_JOYPAD)
-		CTX.inputs[id] = value;
+	GamejinSetInputs(&(GamejinInput) { device, id, value }, 1);
+}
 
-	if (device == RETRO_DEVICE_POINTER) {
+void GamejinSetInputs(const GamejinInput *inputs, size_t count)
+{
+	if (CTX.mutex)
+		core_lock();
+
+	for (size_t i = 0; i < count; i++) {
+		GamejinInputDevice device = inputs[i].device;
+		GamejinInputID id = inputs[i].id;
+		int16_t value = inputs[i].value;
+
+		if (device == RETRO_DEVICE_JOYPAD) {
+			CTX.inputs[id] = value;
+			continue;
+		}
+
+		if (device != RETRO_DEVICE_POINTER)
+			continue;
+
 		switch (id) {
 			case RETRO_DEVICE_ID_POINTER_PRESSED:
 				CTX.pointer.pressed = value;
@@ -831,6 +848,9 @@ void GamejinSetInput(GamejinInputDevice device, GamejinInputID id, int16_t value
 				break;
 		}
 	}
+
+	if (CTX.mutex)
+		core_unlock();
 }
 
 void GamejinSetVariables(const GamejinVariable *variables)

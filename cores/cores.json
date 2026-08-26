@@ -97,9 +97,11 @@
 		"repository": "fake-08",
 		"directory": "platform/libretro",
 		"compilerFlags": ["-fno-exceptions"],
+		"patches": ["../patches/fake08-input-repeat.patch"],
 		"preinclude": "../../../wasi-compat.h",
 		"preincludeFiles": ["*/z8lua/ldo.c", "*/z8lua/loslib.c", "ldo.c", "loslib.c"],
 		"extensions": [".p8", ".p8.png"],
+		"builtinGames": false,
 		"platformAliases": {
 			"PICO-8": ["PICO8", "Pico-8", "Pico8"]
 		},

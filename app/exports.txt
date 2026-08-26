@@ -8,6 +8,7 @@ GamejinDestroy
 GamejinSetAudio
 GamejinSetSpeed
 GamejinSetInput
+GamejinSetInputs
 GamejinSetVariables
 GamejinSetCheats
 

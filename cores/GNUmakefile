@@ -35,6 +35,7 @@ lib%.a: fetch-%
 	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
 	output_variable=`jq -r '."$*".outputVariable // "TARGET"' cores.json` && \
 	cmake=`jq -r '."$*".cmake // false' cores.json` && \
+	patches=`jq -r '."$*".patches[]? // empty' cores.json` && \
 	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
 	cmake_flags=`jq -r '."$*".cmakeFlags[]? // empty' cores.json` && \
 	cmake_c_flags='$(DEFINES)' && \
@@ -45,6 +46,24 @@ lib%.a: fetch-%
 	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
 	preinclude=`jq -r '."$*".preinclude // ""' cores.json` && \
 	preinclude_files=`jq -r '."$*".preincludeFiles? // ["*"] | join(":")' cores.json` && \
+	if test -n "$$preinclude"; then \
+		case "$$preinclude" in \
+			/*) ;; \
+			*) preinclude=`pwd`/$$name/$$makedir/$$preinclude ;; \
+		esac; \
+	fi && \
+	if test -n "$$patches"; then \
+		source_rel=../build/cores/patched/$$name && \
+		source=`pwd`/$$source_rel && \
+		rm -rf "$$source" && \
+		mkdir -p "$$source" && \
+		cp -R "$$name/." "$$source/" && \
+		find "$$source" \( -name "*.o" -o -name "*.d" -o -name "*.a" \) -type f -delete && \
+		for patch_file in $$patches; do \
+			git -C .. apply --no-index --directory="build/cores/patched/$$name" -p1 "$${patch_file#../}"; \
+		done && \
+		name="$$source"; \
+	fi && \
 	flag_args= && \
 	if test -n "$$c_flags"; then flag_args="$$flag_args CFLAGS=$$c_flags"; cmake_c_flags="$$cmake_c_flags $$c_flags"; fi && \
 	if test -n "$$cxx_flags"; then flag_args="$$flag_args CXXFLAGS=$$cxx_flags"; cmake_cxx_flags="$$cmake_cxx_flags $$cxx_flags"; fi && \
@@ -122,13 +141,14 @@ lib%.a: fetch-%
 clear-%:
 	@rm -f `pwd`/lib$*.a
 	@name=`jq -r '."$*".repository // "$*"' cores.json` && \
-	rm -rf `pwd`/$*-libs `pwd`/../build/cores/$$name
+	rm -rf `pwd`/$*-libs `pwd`/../build/cores/$$name `pwd`/../build/cores/patched/$$name
 
 clean-%: clear-%
 	@target=`pwd`/lib$*.a && \
 	name=`jq -r '."$*".repository // "$*"' cores.json` && \
 	cmake=`jq -r '."$*".cmake // false' cores.json` && \
-	if test "$$cmake" = true; then \
+	patches=`jq -r '."$*".patches[]? // empty' cores.json` && \
+	if test "$$cmake" = true || test -n "$$patches"; then \
 		exit 0; \
 	fi && \
 	makedir=`jq -r '."$*".directory // ""' cores.json` && \

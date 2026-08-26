@@ -233,6 +233,7 @@ export default class Interop {
 		this.#wrap('SetAudio',           null,      ['boolean']);
 		this.#wrap('SetSpeed',           null,      ['number']);
 		this.#wrap('SetInput',           null,      ['number', 'number', 'number']);
+		this.#wrap('SetInputs',          null,      ['number', 'number']);
 		this.#wrap('SetVariables',       null,      ['number']);
 		this.#wrap('SetCheats',          null,      ['number']);
 
@@ -262,9 +263,12 @@ export default class Interop {
 	 * @returns {Promise<void>}
 	 */
 	press(touches, buttons) {
+		const messages = [];
 		for (const touch of touches)
 			for (const message of this.#input.press(touch, buttons))
-				this.SetInput(message.device, message.id, message.value);
+				messages.push(message);
+
+		this.input(messages);
 	}
 
 	/**
@@ -275,14 +279,17 @@ export default class Interop {
 	 * @returns {Promise<void>}
 	 */
 	touch(touch, rect, width, height) {
-		for (const message of this.#input.touch(touch, rect, width, height))
-			this.SetInput(message.device, message.id, message.value);
+		this.input(this.#input.touch(touch, rect, width, height));
 	}
 
 	/** @param {InputMessage[]} messages @returns {Promise<void>} */
 	input(messages) {
-		for (const message of messages)
-			this.SetInput(message.device, message.id, message.value);
+		if (!messages.length)
+			return;
+
+		const inputs_ptr = InputMessage.serialize(this.#instance, messages);
+		this.SetInputs(inputs_ptr, messages.length);
+		InputMessage.free(this.#instance, inputs_ptr);
 	}
 
 	/** @returns {Promise<void>} */

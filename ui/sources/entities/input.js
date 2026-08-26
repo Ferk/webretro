@@ -48,4 +48,45 @@ export class InputMessage {
 
 	/** @type {number} */
 	value = 0;
+
+	/**
+	 * @returns {number}
+	 */
+	static #size() { return 12; };
+
+	/**
+	 * @param {WebAssembly.Instance} instance
+	 * @param {InputMessage[]} messages
+	 * @returns {number}
+	 */
+	static serialize(instance, messages) {
+		if (!messages.length)
+			return 0;
+
+		const ptr = instance.exports.calloc(messages.length, this.#size());
+		const view = new DataView(instance.exports.memory.buffer, ptr);
+
+		let offset = 0;
+		for (const message of messages) {
+			view.setUint32(offset + 0, message.device, true);
+			view.setUint32(offset + 4, message.id,     true);
+			view.setInt16 (offset + 8, message.value,  true);
+
+			offset += this.#size();
+		}
+
+		return ptr;
+	}
+
+	/**
+	 * @param {WebAssembly.Instance} instance
+	 * @param {number} ptr
+	 * @returns {void}
+	 */
+	static free(instance, ptr) {
+		if (!ptr)
+			return;
+
+		instance.exports.free(ptr);
+	}
 }

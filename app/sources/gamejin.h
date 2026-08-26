@@ -87,6 +87,12 @@ typedef struct {
 } GamejinCheat;
 
 typedef struct {
+	GamejinInputDevice device;
+	GamejinInputID id;
+	int16_t value;
+} GamejinInput;
+
+typedef struct {
 	const char *library_name;
 	const char *library_version;
 	const char *valid_extensions;
@@ -104,6 +110,7 @@ void GamejinDestroy();
 
 void GamejinSetSpeed(uint8_t speed);
 void GamejinSetInput(GamejinInputDevice device, GamejinInputID id, int16_t value);
+void GamejinSetInputs(const GamejinInput *inputs, size_t count);
 void GamejinSetVariables(const GamejinVariable *variables);
 void GamejinSetCheats(const GamejinCheat *cheats);
 
