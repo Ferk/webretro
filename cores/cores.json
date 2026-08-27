@@ -1,12 +1,4 @@
 {
-	"2048": {
-		"name": "2048",
-		"repository": "libretro-2048",
-		"makefile": "Makefile.libretro",
-		"builtinGames": ["2048"],
-		"extensions": [],
-		"systems": ["2048"]
-	},
 	"gambatte": {
 		"name": "Gambatte",
 		"repository": "gambatte-libretro",
@@ -101,7 +93,7 @@
 		"preinclude": "../../../wasi-compat.h",
 		"preincludeFiles": ["*/z8lua/ldo.c", "*/z8lua/loslib.c", "ldo.c", "loslib.c"],
 		"extensions": [".p8", ".p8.png"],
-		"builtinGames": false,
+		"builtinGames": [],
 		"platformAliases": {
 			"PICO-8": ["PICO8", "Pico-8", "Pico8"]
 		},
@@ -130,5 +122,13 @@
 			"tic80-libs/libgiflib.a",
 			"tic80-libs/libblipbuf.a"
 		]
+	},
+	"2048": {
+		"name": "2048",
+		"repository": "libretro-2048",
+		"makefile": "Makefile.libretro",
+		"builtinGames": ["2048"],
+		"extensions": [],
+		"systems": ["Standalone Core"]
 	}
 }
