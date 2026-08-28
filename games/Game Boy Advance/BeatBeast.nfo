@@ -1,0 +1,11 @@
+<game>
+  <title>BeatBeast</title>
+  <platform>Gameboy Advance</platform>
+  <genre>Rhythm / Shooter</genre>
+  <developer>Afska / LaChia / Synthenia</developer>
+  <plot>
+Battle a monstrous boss in a rhythm-driven shooter where attacks and movement are tied to the music, combining bullet-dodging action with musical timing.
+  </plot>
+  <license>MIT (code); various CC licenses for assets (see website)</license>
+  <website>https://afska.itch.io/beat-beast</website>
+</game>

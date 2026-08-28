@@ -1,0 +1,10 @@
+<game>
+  <title>Blind Jump (portable)</title>
+  <platform>Gameboy Advance</platform>
+  <genre>Action/Adventure</genre>
+  <developer>Evan Bowman</developer>
+  <plot>A action/adventure game, featuring procedurally generated level maps, collectible items, fluid animation, and meticulously designed color palettes.</plot>
+  <version>2021.11.20.0</version>
+  <license>MPL-2.0</license>
+  <website>https://github.com/evanbowman/blind-jump-portable</website>
+</game>

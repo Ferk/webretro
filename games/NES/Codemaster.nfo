@@ -1,0 +1,9 @@
+<game>
+  <title>Codemaster</title>
+  <platform>NES</platform>
+  <genre>Puzzle</genre>
+  <developer>Daniel Vukelich</developer>
+  <plot>Crack a hidden sequence of symbols in this NES adaptation of the classic code-breaking game, featuring single-player and two-player modes.</plot>
+  <license>GPL-3.0</license>
+  <website>https://github.com/DanielVukelich/Codemaster-NES-homebrew</website>
+</game>

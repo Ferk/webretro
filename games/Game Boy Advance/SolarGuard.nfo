@@ -1,0 +1,11 @@
+<game>
+  <title>Solar Guard</title>
+  <platform>Gameboy Advance</platform>
+  <year>2021</year>
+  <genre>Action</genre>
+  <developer>Deft Spade</developer>
+  <plot>Defend the solar system against an invading alien force in this Game Boy Advance homebrew game.</plot>
+  <version>GBA Jam 2021</version>
+  <license>GPL-3.0 (code and original assets)</license>
+  <website>https://github.com/Deft-Spade/Solar-Guard</website>
+</game>

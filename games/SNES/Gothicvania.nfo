@@ -1,0 +1,13 @@
+<game>
+  <title>Gothicvania</title>
+  <platform>SNES</platform>
+  <year>2026</year>
+  <genre>Action / Platformer</genre>
+  <developer>donth77</developer>
+  <plot>
+Explore a haunted graveyard in a gothic action-platformer. Run, jump and fight your way through skeletons, ghosts and other creatures while avoiding deadly spikes and surviving the dangers of the cemetery.
+  </plot>
+  <version>1.0.0</version>
+  <license>MIT (code); CC0 (graphics)</license>
+  <website>https://github.com/donth77/snes-homebrew</website>
+</game>

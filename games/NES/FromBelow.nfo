@@ -1,0 +1,11 @@
+<game>
+  <title>From Below</title>
+  <platform>NES</platform>
+  <genre>Puzzle</genre>
+  <developer>Matt Hughson</developer>
+  <plot>From the deepest trenches of the ocean, the Kraken has come to lay waste to your city!</plot>
+  <version>1.0 Final</version>
+  <license>GPL-3.0</license>
+  <website>https://mhughson.itch.io/from-below</website>
+  <trailer>https://www.youtube.com/watch?v=qAvW2n8Qbeg</trailer>
+</game>

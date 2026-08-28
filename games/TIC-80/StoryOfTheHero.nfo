@@ -1,0 +1,9 @@
+<game>
+  <title>Story of the Hero</title>
+  <platform>TIC-80</platform>
+  <genre>Interactive Fiction / Adventure</genre>
+  <developer>amayer5125</developer>
+  <plot>A fantasy story-driven adventure where the player must make the difficult choices faced by a hero, with decisions influencing how the story unfolds.</plot>
+  <license>MIT (code)</license>
+  <website>https://amayer5125.itch.io/story-of-the-hero</website>
+</game>

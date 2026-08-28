@@ -1,0 +1,10 @@
+<game>
+  <title>Notenogram</title>
+  <platform>Gameboy Advance</platform>
+  <year>2023</year>
+  <genre>Puzzle</genre>
+  <developer>kva64</developer>
+  <plot>A Picross puzzle game featuring a story mode with three possible endings determined by the player's puzzle-solving performance.</plot>
+  <license>Zlib</license>
+  <website>https://github.com/gbajam22/notenogram</website>
+</game>

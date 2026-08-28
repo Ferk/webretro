@@ -9,6 +9,6 @@ Starring Nova Storm, a green squirrel, who finds herself in an unfamiliar world 
 This game takes inspiration from Super Mario Bros. 3, Kirby Super Star, Chip's Challenge, and Hannah and the Pirate Caves. It has a strong focus on puzzle platforming.
   </plot>
   <version>1.0.6a</version>
-  <license>GPL-3.0</license>
+  <license>GPL-3.0-or-later (code); CC-BY-NC-SA-4.0 (assets)</license>
   <website>https://github.com/NovaSquirrel/NovaTheSquirrel</website>
 </game>

@@ -1,0 +1,9 @@
+<game>
+    <title>Raise the Dead</title>
+    <platform>PICO-8</platform>
+    <genre>Puzzle / Platformer</genre>
+    <developer>Joshua Stimpert</developer>
+    <plot>A recently resurrected skeleton must escape from its tomb by navigating deadly chambers and hopping across floating skulls to reach the exit.</plot>
+    <license>MIT</license>
+    <website>https://github.com/jStimpert0430/RaiseTheDead</website>
+</game>

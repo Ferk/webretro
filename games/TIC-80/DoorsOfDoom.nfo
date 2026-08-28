@@ -1,0 +1,9 @@
+<game>
+  <title>Doors of Doom</title>
+  <platform>TIC-80</platform>
+  <genre>Role Playing</genre>
+  <developer>msx80</developer>
+  <plot>Explore a dungeon of seemingly endless doors, battling the monsters lurking behind them while collecting loot, crafting equipment and becoming stronger.</plot>
+  <license>Apache-2.0</license>
+  <website>https://github.com/msx80/DoorsOfDoom</website>
+</game>

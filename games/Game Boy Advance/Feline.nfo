@@ -1,0 +1,11 @@
+<game>
+  <title>Feline</title>
+  <platform>Gameboy Advance</platform>
+  <year>2021</year>
+  <genre>Adventure/Platformer</genre>
+  <developer>Jono Shields</developer>
+  <plot>Explore the world as a cat, meet new people, learn new languages, face dangerous foes and set out to save your family.</plot>
+  <version>2021</version>
+  <license>MIT</license>
+  <website>https://github.com/foopod/gbaGamejam2021</website>
+</game>

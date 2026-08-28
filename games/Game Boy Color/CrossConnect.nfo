@@ -1,0 +1,11 @@
+<game>
+  <title>CrossConnect</title>
+  <platform>Game Boy Color</platform>
+  <year>2022</year>
+  <genre>Puzzle</genre>
+  <developer>Quinn Painter</developer>
+  <plot>A Numberlink-style puzzle game where matching nodes must be connected while filling the entire board.</plot>
+  <version>1.0</version>
+  <license>MIT</license>
+  <website>https://github.com/QuinnPainter/CrossConnect</website>
+</game>

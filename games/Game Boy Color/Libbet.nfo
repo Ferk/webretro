@@ -1,0 +1,16 @@
+<game>
+  <title>Libbet and the Magic Floor</title>
+  <platform>Game Boy / Game Boy Color</platform>
+  <year>2024</year>
+  <genre>Puzzle</genre>
+  <developer>Damian Yerrick</developer>
+  <plot>
+  This is a port of Martin Korth's game Magic Floor to the Game Boy compact video game system, introducing Libbet the boulder girl.
+
+One day, Libbet was rearranging her basement when she discovered a passage to an empty hall whose floor had a peculiar pattern. She rolled in to investigate.
+
+The floor tiles have four shades. Libbet can roll or jump between tiles of the same shade. She can also roll or jump onto the next brighter shade or from white to black, which leaves a track. Tiles with no exits contain a trap door that leads to the entrance. Leave 90 percent of possible tracks and roll to the exit to win.
+  </plot>
+  <license>Zlib</license>
+  <website>https://github.com/pinobatch/libbet</website>
+</game>

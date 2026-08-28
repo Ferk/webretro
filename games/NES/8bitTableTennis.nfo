@@ -1,0 +1,11 @@
+<game>
+  <title>8-Bit Table Tennis</title>
+  <platform>NES</platform>
+  <genre>Sports</genre>
+  <year>2020</year>
+  <developer>Michael Dales</developer>
+  <plot>A two-player table tennis game for the NES where players compete to be the first to score 11 points.</plot>
+  <license>MIT</license>
+  <version>1.0</version>
+  <website>https://github.com/mike42/8bit-table-tennis</website>
+</game>

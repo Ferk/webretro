@@ -1,0 +1,13 @@
+<game>
+  <title>DCPR</title>
+  <platform>Gameboy Advance</platform>
+  <year>2024</year>
+  <genre>Dungeon Crawler / Action</genre>
+  <developer>MilanFIN</developer>
+  <plot>
+Explore procedurally generated first-person dungeons, battle enemies and collect powerups while searching for the hidden key needed to unlock the exit and advance to the next level.
+  </plot>
+  <version>1.0</version>
+  <license>MIT</license>
+  <website>https://github.com/MilanFIN/dcpr</website>
+</game>

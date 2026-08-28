@@ -1,0 +1,9 @@
+<game>
+  <title>LiDAR Dungeon</title>
+  <platform>TIC-80</platform>
+  <genre>Roguelike / Shooter</genre>
+  <developer>Wojciech Graj</developer>
+  <plot>Traverse a procedurally generated spaceship, using LiDAR to reveal the darkness while fighting enemies and collecting upgrades in its dangerous depths.</plot>
+  <license>GPL-3.0</license>
+  <website>https://github.com/wojciech-graj/LiDAR-Dungeon</website>
+</game>

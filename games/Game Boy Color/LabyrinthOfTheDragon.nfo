@@ -1,0 +1,12 @@
+<game>
+  <title>Labyrinth of the Dragon</title>
+  <platform>Game Boy Color</platform>
+  <year>2025</year>
+  <genre>Role Playing</genre>
+  <developer>NesHacker</developer>
+  <plot>A D&amp;D-inspired 8-bit RPG where an adventurer trapped in a dungeon must fight monsters, solve puzzles, level up, collect treasure, and work through eight dungeon floors.</plot>
+  <version>1.0.5 Alpha</version>
+  <license>MIT</license>
+  <website>https://github.com/NesHacker/LabyrinthOfTheDragon</website>
+  <trailer>https://www.youtube.com/watch?v=APWrwn26Qts</trailer>
+</game>

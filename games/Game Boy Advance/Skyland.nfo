@@ -1,0 +1,9 @@
+<game>
+  <title>Skyland</title>
+  <platform>Gameboy Advance</platform>
+  <genre>Strategy</genre>
+  <developer>Evan Bowman</developer>
+  <plot>A realtime strategy game for Game Boy Advance.</plot>
+  <license>MPL2.0</license>
+  <website>https://github.com/evanbowman/skyland-gba</website>
+</game>

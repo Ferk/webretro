@@ -1,0 +1,9 @@
+<game>
+    <title>Porklike</title>
+    <platform>PICO-8</platform>
+    <genre>RPG / Roguelike</genre>
+    <developer>Ilya Aleksin</developer>
+    <plot>Enter the tower of the Wurstlord and climb through nine floors of enemies and dangerous traps in search of the legendary Kielbasa.</plot>
+    <license>MIT</license>
+    <website>https://github.com/jean-louis1776/porklike-pico8</website>
+</game>

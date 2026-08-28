@@ -1,0 +1,11 @@
+<game>
+  <title>GB-Wordyl</title>
+  <platform>Game Boy Color</platform>
+  <year>2022</year>
+  <genre>Word/Puzzle</genre>
+  <developer>bbbbbr</developer>
+  <plot>A feature-rich word guessing game with multiple languages, statistics, hard mode and Game Boy Color support.</plot>
+  <version>1.0.7</version>
+  <license>GPL-3.0</license>
+  <website>https://github.com/bbbbbr/gb-wordyl</website>
+</game>
