@@ -11,6 +11,7 @@
 #include "rthreads/rthreads.h"
 
 #define LOG(msg, ...) core_log_params(__FUNCTION__, msg, __VA_ARGS__)
+#define GAMEJIN_JOYPAD_INPUT_COUNT (RETRO_DEVICE_ID_JOYPAD_R3 + 1)
 
 typedef enum {
 	GAMEJIN_PATH_GAME   = 0,
@@ -55,7 +56,7 @@ static struct CTX {
 	size_t memory_size;
 
 	uint8_t speed;
-	bool inputs[UINT8_MAX];
+	bool inputs[GAMEJIN_JOYPAD_INPUT_COUNT];
 	bool variables_update;
 
 	struct {
@@ -181,6 +182,8 @@ static bool environment(unsigned cmd, void *data)
 
 			return true;
 		}
+		case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS & ~RETRO_ENVIRONMENT_EXPERIMENTAL:
+			return true;
 		case RETRO_ENVIRONMENT_GET_LOG_INTERFACE: {
 			struct retro_log_callback *callback = data;
 
@@ -410,8 +413,21 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
 	if (port != 0)
 		return 0;
 
-	if (device == RETRO_DEVICE_JOYPAD)
+	if (device == RETRO_DEVICE_JOYPAD) {
+		if (id == RETRO_DEVICE_ID_JOYPAD_MASK) {
+			int16_t mask = 0;
+			for (unsigned i = 0; i < GAMEJIN_JOYPAD_INPUT_COUNT; i++) {
+				if (CTX.inputs[i])
+					mask |= 1 << i;
+			}
+			return mask;
+		}
+
+		if (id >= GAMEJIN_JOYPAD_INPUT_COUNT)
+			return 0;
+
 		return CTX.inputs[id];
+	}
 
 	if (device == RETRO_DEVICE_POINTER) {
 		switch (id) {
@@ -826,7 +842,7 @@ void GamejinSetInputs(const GamejinInput *inputs, size_t count)
 		GamejinInputID id = inputs[i].id;
 		int16_t value = inputs[i].value;
 
-		if (device == RETRO_DEVICE_JOYPAD) {
+		if (device == RETRO_DEVICE_JOYPAD && id < GAMEJIN_JOYPAD_INPUT_COUNT) {
 			CTX.inputs[id] = value;
 			continue;
 		}
