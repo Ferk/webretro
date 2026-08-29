@@ -35,6 +35,8 @@
 		"name": "DOSBox Pure",
 		"repository": "dosbox-pure",
 		"outputVariable": "OUTNAME",
+		"buildFlags": ["NO_EXCEPTIONS=1"],
+		"patches": ["cores/patches/dosbox-pure/wasi-no-cxx-exceptions.patch"],
 		"extensions": [".zip", ".dosz", ".exe", ".com", ".bat", ".iso", ".chd", ".cue", ".ins", ".img", ".ima", ".vhd", ".jrc", ".m3u", ".m3u8", ".conf"],
 		"platformAliases": {
 			"DOS": ["DOSBox", "DOSBox Pure", "MS-DOS", "PC", "IBM PC", "DOS Games"]
@@ -89,7 +91,7 @@
 		"repository": "fake-08",
 		"directory": "platform/libretro",
 		"compilerFlags": ["-fno-exceptions"],
-		"patches": ["../patches/fake08-input-repeat.patch"],
+		"patches": ["cores/patches/fake-08/input-repeat.patch"],
 		"preinclude": "../../../wasi-compat.h",
 		"preincludeFiles": ["*/z8lua/ldo.c", "*/z8lua/loslib.c", "ldo.c", "loslib.c"],
 		"extensions": [".p8", ".p8.png"],
@@ -108,6 +110,7 @@
 		"defineEmscripten": false,
 		"cFlags": "-DMA_3DS -DL_tmpnam=32 -D_WASI_EMULATED_PROCESS_CLOCKS",
 		"linkFlags": ["-lwasi-emulated-process-clocks"],
+		"patches": ["cores/patches/TIC-80/0001-Fix-WASM-libretro-core-build-failing-at-runtime.patch"],
 		"extensions": [".tic"],
 		"platformAliases": {
 			"TIC-80": ["TIC80", "TIC"]

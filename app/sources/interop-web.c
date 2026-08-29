@@ -120,7 +120,8 @@ clock_t clock(void) { return 0; }
 int madvise(void *addr, size_t length, int advice) { return 0; }
 
 
-// WASI
+// C++ exception stubs for cores that reference throw helpers but do not use
+// them on supported paths. DOSBox Pure is built to avoid these symbols.
 
 void *__cxa_allocate_exception(size_t thrown_size) { abort(); }
 void __cxa_throw(void *thrown_object, void *tinfo, void (*dest)(void *)) { abort(); }

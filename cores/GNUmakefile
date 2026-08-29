@@ -31,6 +31,7 @@ fetch-%:
 lib%.a: fetch-%
 	@target=`pwd`/lib$*.a && \
 	name=`jq -r '."$*".repository // "$*"' cores.json` && \
+	source="$$name" && \
 	makedir=`jq -r '."$*".directory // ""' cores.json` && \
 	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
 	output_variable=`jq -r '."$*".outputVariable // "TARGET"' cores.json` && \
@@ -49,7 +50,7 @@ lib%.a: fetch-%
 	if test -n "$$preinclude"; then \
 		case "$$preinclude" in \
 			/*) ;; \
-			*) preinclude=`pwd`/$$name/$$makedir/$$preinclude ;; \
+			*) preinclude=`pwd`/$$source/$$makedir/$$preinclude ;; \
 		esac; \
 	fi && \
 	if test -n "$$patches"; then \
@@ -60,9 +61,15 @@ lib%.a: fetch-%
 		cp -R "$$name/." "$$source/" && \
 		find "$$source" \( -name "*.o" -o -name "*.d" -o -name "*.a" \) -type f -delete && \
 		for patch_file in $$patches; do \
-			git -C .. apply --no-index --directory="build/cores/patched/$$name" -p1 "$${patch_file#../}"; \
-		done && \
-		name="$$source"; \
+			patch_path="$${patch_file#../}"; \
+			if git -C .. apply --check --no-index --directory="build/cores/patched/$$name" -p1 "$$patch_path" >/dev/null 2>&1; then \
+				git -C .. apply --no-index --directory="build/cores/patched/$$name" -p1 "$$patch_path"; \
+			elif git -C .. apply --check --reverse --no-index --directory="build/cores/patched/$$name" -p1 "$$patch_path" >/dev/null 2>&1; then \
+				echo "Patch already applied: $$patch_file"; \
+			else \
+				git -C .. apply --check --no-index --directory="build/cores/patched/$$name" -p1 "$$patch_path"; \
+			fi; \
+		done; \
 	fi && \
 	flag_args= && \
 	if test -n "$$c_flags"; then flag_args="$$flag_args CFLAGS=$$c_flags"; cmake_c_flags="$$cmake_c_flags $$c_flags"; fi && \
@@ -98,7 +105,7 @@ lib%.a: fetch-%
 	echo Building lib$*.a... && \
 	if test "$$cmake" = true; then \
 		builddir=`pwd`/../build/cores/$$name && \
-		cmake -S $$name/$$makedir -B $$builddir \
+		cmake -S $$source/$$makedir -B $$builddir \
 			-DCMAKE_BUILD_TYPE=Release \
 			-DCMAKE_SYSTEM_NAME=Generic \
 			-DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
@@ -132,7 +139,7 @@ lib%.a: fetch-%
 		find $$builddir -name "$*_libretro*.a" -print -quit | xargs -r cp -f -t `pwd` && \
 		cp -f `pwd`/$*_libretro*.a $$target; \
 	else \
-		$(MAKE) -C $$name/$$makedir -f $$makefile $$target_arg \
+		$(MAKE) -C $$source/$$makedir -f $$makefile $$target_arg \
 			$(BUILD_JOBS) HAVE_OPENGL=0 STATIC_LINKING=1 AR="$$ar" RANLIB="$$ranlib" \
 			platform=$$platform CC="$$cc" CXX="$$cxx" \
 			$$flag_args $$extra_flags $(QUIET); \

@@ -1,0 +1,58 @@
+diff -ruN dosbox-pure-patch-old/Makefile dosbox-pure-patch-new/Makefile
+--- dosbox-pure-patch-old/Makefile
++++ dosbox-pure-patch-new/Makefile
+@@ -225,7 +225,11 @@
+   LDFLAGS  += -O2
+ endif
+ 
+-CFLAGS  += $(CPUFLAGS) -std=gnu++11 -fomit-frame-pointer -fexceptions -Wno-address-of-packed-member -Wno-format -Wno-switch -Wno-psabi
++ifeq ($(NO_EXCEPTIONS), 1)
++  CFLAGS  += $(CPUFLAGS) -std=gnu++11 -fomit-frame-pointer -fno-exceptions -DDBP_USE_LONGJMP_PAGE_FAULTS -Wno-address-of-packed-member -Wno-format -Wno-switch -Wno-psabi
++else
++  CFLAGS  += $(CPUFLAGS) -std=gnu++11 -fomit-frame-pointer -fexceptions -Wno-address-of-packed-member -Wno-format -Wno-switch -Wno-psabi
++endif
+ ifneq ($(STATIC_LINKING), 1)
+   CFLAGS  += -fpic
+ else
+diff -ruN dosbox-pure-patch-old/include/paging.h dosbox-pure-patch-new/include/paging.h
+--- dosbox-pure-patch-old/include/paging.h
++++ dosbox-pure-patch-new/include/paging.h
+@@ -396,7 +396,7 @@
+ 
+ extern bool paging_prevent_exception_jump;
+ 
+-#if 1 // use C++ exceptions
++#if !defined(DBP_USE_LONGJMP_PAGE_FAULTS) // use C++ exceptions
+ #include <exception>
+ struct GuestPageFaultException : std::exception {
+ 	GuestPageFaultException(Bitu n_faultcode) : faultcode(n_faultcode) {}
+@@ -442,7 +442,16 @@
+ 		paging_prevent_exception_jump = false; \
+ 	}
+ 
+-#define PAGE_FAULT_CATCH TODO
++#define PAGE_FAULT_CATCH
++
++#define PAGE_FAULT_CLEANUP_SETUP(...) __VA_ARGS__
++#define PAGE_FAULT_CLEANUP_TRY(...) { \
++	Bit32u pagefault_cleanup_old_esp = pagefault_old_esp; \
++	__VA_ARGS__ \
++	pagefault_old_esp = reg_esp;
++#define PAGE_FAULT_CLEANUP_CATCH(...) \
++	pagefault_old_esp = pagefault_cleanup_old_esp; \
++	}
+ #endif
+ 
+ #endif
+diff -ruN dosbox-pure-patch-old/src/dosbox.cpp dosbox-pure-patch-new/src/dosbox.cpp
+--- dosbox-pure-patch-old/src/dosbox.cpp
++++ dosbox-pure-patch-new/src/dosbox.cpp
+@@ -406,7 +406,7 @@
+ 	loop=Normal_Loop;
+ }
+ 
+-#if 0
++#if defined(DBP_USE_LONGJMP_PAGE_FAULTS)
+ Bit32u pagefault_old_esp;
+ Bitu pagefault_faultcode;
+ std::jmp_buf pagefault_jmp_buf;
