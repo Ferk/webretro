@@ -10,6 +10,7 @@ import { Variable } from '../entities/variable';
 import { Settings } from '../entities/settings';
 import { Cheat } from '../entities/cheat';
 import Input from '../services/input';
+import AudioPlayer from '../services/audio';
 
 /**
  * @param {Object} parameters
@@ -152,7 +153,9 @@ const Control = ({ name, id, type, inset }) => {
 export const CoreModal = ({ system, game, close }) => {
 	const content = useRef(/** @type {HTMLIonContentElement} */ (null));
 	const canvas  = useRef(/** @type {HTMLCanvasElement}     */ (null));
+	const menu = useRef(/** @type {HTMLIonMenuElement}       */ (null));
 	const hardware = useRef(new Input());
+	const menuOpen = useRef(false);
 
 	const [core, audio, speed, gamepad] = useCore(system.lib_name);
 	const [window_w, window_h] = useSize({ current: document.body });
@@ -203,6 +206,16 @@ export const CoreModal = ({ system, game, close }) => {
 
 	/** @param {KeyboardEvent} event @returns {void} */
 	const keyboard = (event) => {
+		if (event.code == 'Escape') {
+			event.preventDefault();
+			event.stopImmediatePropagation();
+			menu.current?.toggle();
+			return;
+		}
+
+		if (menuOpen.current)
+			return;
+
 		if (isEditable(event.target))
 			return;
 
@@ -216,6 +229,14 @@ export const CoreModal = ({ system, game, close }) => {
 		const messages = hardware.current.releaseKeyboard();
 		if (messages.length)
 			core.current.input(messages);
+	}
+
+	/** @param {boolean} paused @returns {void} */
+	const setPaused = (paused) => {
+		menuOpen.current = paused;
+		releaseKeyboard();
+		core.current?.pause(paused);
+		paused ? AudioPlayer.pause() : AudioPlayer.resume();
 	}
 
 	/** @returns {void} */
@@ -279,12 +300,12 @@ export const CoreModal = ({ system, game, close }) => {
 	}, []);
 
 	useEffect(() => {
-		addEventListener('keydown', keyboard);
+		addEventListener('keydown', keyboard, true);
 		addEventListener('keyup', keyboard);
 		addEventListener('blur', releaseKeyboard);
 
 		return () => {
-			removeEventListener('keydown', keyboard);
+			removeEventListener('keydown', keyboard, true);
 			removeEventListener('keyup', keyboard);
 			removeEventListener('blur', releaseKeyboard);
 		};
@@ -294,7 +315,8 @@ export const CoreModal = ({ system, game, close }) => {
 
 	return (
 		<>
-			<IonMenu className="core-settings" contentId="core" side="start" swipeGesture={false}>
+			<IonMenu ref={menu} menuId="core-settings" className="core-settings" contentId="core" side="start" swipeGesture={false}
+				onIonWillOpen={() => setPaused(true)} onIonDidClose={() => setPaused(false)}>
 				<IonHeader>
 					<IonToolbar>
 						<IonTitle>Settings</IonTitle>

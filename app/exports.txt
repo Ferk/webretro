@@ -6,6 +6,7 @@ GamejinGetStatus
 GamejinDestroy
 
 GamejinSetAudio
+GamejinSetPaused
 GamejinSetSpeed
 GamejinSetInput
 GamejinSetInputs

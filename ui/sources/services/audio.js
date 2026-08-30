@@ -8,15 +8,18 @@ export default class AudioPlayer {
 	/** @type {Promise<void>} */
 	static #order = Promise.resolve();
 
+	/** @type {boolean} */
+	static #paused = false;
+
 	/**
 	 * @param {AudioContext} context
 	 * @return {void}
 	 */
 	static #unlock(context) {
 		window.addEventListener('blur', () => context.suspend());
-		window.addEventListener('focus', () => setTimeout(() => context.resume(), 250));
+		window.addEventListener('focus', () => !this.#paused && setTimeout(() => context.resume(), 250));
 
-		const unlock = () => context.state == 'suspended' && context.resume();
+		const unlock = () => !this.#paused && context.state == 'suspended' && context.resume();
 		window.addEventListener('keydown', unlock);
 		window.addEventListener('mousedown', unlock);
 		window.addEventListener('touchstart', unlock);
@@ -50,5 +53,17 @@ export default class AudioPlayer {
 	 */
 	static queue(frames, sample_rate) {
 		this.#order = this.#order.then(() => this.#queue(frames, sample_rate));
+	}
+
+	/** @returns {void} */
+	static pause() {
+		this.#paused = true;
+		Object.values(this.#contexts).forEach(context => context.suspend());
+	}
+
+	/** @returns {void} */
+	static resume() {
+		this.#paused = false;
+		Object.values(this.#contexts).forEach(context => context.resume());
 	}
 }

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <stdatomic.h>
 
 #include "interop.h"
 #include "rthreads/rthreads.h"
@@ -56,6 +57,7 @@ static struct CTX {
 	size_t memory_size;
 
 	uint8_t speed;
+	atomic_bool paused;
 	bool inputs[GAMEJIN_JOYPAD_INPUT_COUNT];
 	bool variables_update;
 
@@ -642,6 +644,14 @@ static void restore_memories()
 static void core_thread(void *opaque)
 {
 	while (!CTX.destroying) {
+		if (atomic_load(&CTX.paused)) {
+			/* Do not turn the paused interval into a burst of catch-up frames. */
+			CTX.run_timestamp = 0;
+			CTX.run_remaining_frames = 0;
+			core_sleep(10);
+			continue;
+		}
+
 		if (!core_should_run()) {
 			core_sleep(1);
 			continue;
@@ -671,6 +681,7 @@ void GamejinCreate(const char *system, const char *rom, bool content_required)
 	setbuf(stdout, NULL);
 
 	CTX.speed = 1;
+	atomic_init(&CTX.paused, false);
 	CTX.probing = false;
 	CTX.content_required = content_required;
 
@@ -820,6 +831,11 @@ void GamejinDestroy()
 void GamejinSetAudio(bool enable)
 {
 	CTX.audio.enable = enable;
+}
+
+void GamejinSetPaused(bool paused)
+{
+	atomic_store(&CTX.paused, paused);
 }
 
 void GamejinSetSpeed(uint8_t speed)

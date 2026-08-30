@@ -108,6 +108,8 @@ const char *GamejinGetError();
 char *GamejinGetStatus();
 void GamejinDestroy();
 
+void GamejinSetAudio(bool enable);
+void GamejinSetPaused(bool paused);
 void GamejinSetSpeed(uint8_t speed);
 void GamejinSetInput(GamejinInputDevice device, GamejinInputID id, int16_t value);
 void GamejinSetInputs(const GamejinInput *inputs, size_t count);

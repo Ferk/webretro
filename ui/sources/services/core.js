@@ -178,6 +178,9 @@ export default class Core {
 	/** @param {boolean} enable @returns {Promise<void>} */
 	async audio(enable) { await this.#interop?.audio(enable); }
 
+	/** @param {boolean} paused @returns {Promise<void>} */
+	async pause(paused) { await this.#interop?.pause(paused); }
+
 	/** @param {number} value @returns {Promise<void>} */
 	async speed(value) { await this.#interop?.speed(value); }
 
