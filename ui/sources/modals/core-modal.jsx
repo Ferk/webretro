@@ -350,26 +350,27 @@ export const CoreModal = ({ system, game, close }) => {
 	}, [content?.current]);
 
 	useEffect(() => {
-		/** @param {MouseEvent} event @returns {void} */
+		/** @param {MouseEvent | PointerEvent} event @returns {void} */
 		const mouse = (event) => {
 			if (inputMode.value != 'direct' || menuOpen.current || !mouseCaptured.current)
 				return;
 
-			const messages = hardware.current.mouse(event);
+			const rect = canvas.current.getBoundingClientRect();
+			const messages = hardware.current.mouse(event, rect, canvas.current.width, canvas.current.height);
 			if (messages.length)
 				core.current.input(messages);
 		};
 
-		// Pointer Lock retargets mouse events to the locked element. Listen at the
-		// window so relative movement reaches the core across browser implementations.
-		addEventListener('mousemove', mouse, true);
-		addEventListener('mousedown', mouse, true);
-		addEventListener('mouseup', mouse, true);
+		// Pointer Lock retargets input to the locked element. Listen at the window
+		// so relative pointer movement reaches the core across browser implementations.
+		addEventListener('pointermove', mouse, true);
+		addEventListener('pointerdown', mouse, true);
+		addEventListener('pointerup', mouse, true);
 
 		return () => {
-			removeEventListener('mousemove', mouse, true);
-			removeEventListener('mousedown', mouse, true);
-			removeEventListener('mouseup', mouse, true);
+			removeEventListener('pointermove', mouse, true);
+			removeEventListener('pointerdown', mouse, true);
+			removeEventListener('pointerup', mouse, true);
 		};
 	}, [inputMode.value]);
 

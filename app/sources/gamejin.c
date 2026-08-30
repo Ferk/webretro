@@ -438,6 +438,15 @@ static void input_poll()
 	CTX.mouse.pending_y = 0;
 }
 
+static int16_t input_pointer_position(int16_t position, uint32_t extent)
+{
+	if (!extent)
+		return 0;
+
+	double scaled = ((double) position * 0x10000) / (double) extent - 0x8000;
+	return scaled >= INT16_MAX ? INT16_MAX : scaled <= INT16_MIN ? INT16_MIN : (int16_t) scaled;
+}
+
 static int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
 {
 	if (port != 0)
@@ -464,9 +473,9 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
 			case RETRO_DEVICE_ID_POINTER_PRESSED:
 				return CTX.pointer.pressed;
 			case RETRO_DEVICE_ID_POINTER_X:
-				return (((double) CTX.pointer.x * 0x10000) / (double) CTX.video.width) - 0x8000;
+				return input_pointer_position(CTX.pointer.x, CTX.video.width);
 			case RETRO_DEVICE_ID_POINTER_Y:
-				return (((double) CTX.pointer.y * 0x10000) / (double) CTX.video.height) - 0x8000;
+				return input_pointer_position(CTX.pointer.y, CTX.video.height);
 		}
 	}
 

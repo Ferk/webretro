@@ -19,6 +19,9 @@ export default class Input {
 	/** @type {{[key: number]: boolean}} */
 	#directKeyboard = {};
 
+	/** @type {{x: number, y: number, pressed: boolean} | null} */
+	#mousePointer = null;
+
 	/**
 	 * @param {DOMRect} rect
 	 * @param {number} x
@@ -221,13 +224,19 @@ export default class Input {
 	}
 
 	/**
-	 * @param {MouseEvent} event
+	 * @param {MouseEvent | PointerEvent} event
+	 * @param {DOMRect} rect
+	 * @param {number} width
+	 * @param {number} height
 	 * @returns {InputMessage[]}
 	 */
-	mouse(event) {
+	mouse(event, rect, width, height) {
 		const messages = [];
+		const move = event.type == 'mousemove' || event.type == 'pointermove';
+		const down = event.type == 'mousedown' || event.type == 'pointerdown';
+		const up = event.type == 'mouseup' || event.type == 'pointerup';
 
-		if (event.type == 'mousemove') {
+		if (move) {
 			if (event.movementX)
 				messages.push({ device: Input.Device.MOUSE, id: Input.Mouse.X, value: event.movementX });
 			if (event.movementY)
@@ -239,8 +248,36 @@ export default class Input {
 			1: Input.Mouse.MIDDLE,
 			2: Input.Mouse.RIGHT,
 		};
-		if (buttons[event.button] != null && event.type != 'mousemove')
-			messages.push({ device: Input.Device.MOUSE, id: buttons[event.button], value: event.type == 'mousedown' });
+		if (buttons[event.button] != null && !move)
+			messages.push({ device: Input.Device.MOUSE, id: buttons[event.button], value: down });
+
+		// Pointer Lock exposes relative movement, but some cores also use the
+		// libretro absolute pointer device for their menus. Keep both in step.
+		if (!this.#mousePointer) {
+			const x = event.clientX - rect.left;
+			const y = event.clientY - rect.top;
+			this.#mousePointer = {
+				x: Math.max(0, Math.min(width, x / rect.width * width)),
+				y: Math.max(0, Math.min(height, y / rect.height * height)),
+				pressed: false,
+			};
+		}
+
+		if (move) {
+			this.#mousePointer.x = Math.max(0, Math.min(width,
+				this.#mousePointer.x + event.movementX / rect.width * width));
+			this.#mousePointer.y = Math.max(0, Math.min(height,
+				this.#mousePointer.y + event.movementY / rect.height * height));
+		}
+		if (down || up)
+			this.#mousePointer.pressed = down;
+
+		messages.push(
+			{ device: Input.Device.POINTER, id: Input.Pointer.X, value: this.#mousePointer.x },
+			{ device: Input.Device.POINTER, id: Input.Pointer.Y, value: this.#mousePointer.y },
+			{ device: Input.Device.POINTER, id: Input.Pointer.PRESSED, value: this.#mousePointer.pressed },
+			{ device: Input.Device.POINTER, id: Input.Pointer.COUNT, value: 1 },
+		);
 
 		return messages;
 	}
