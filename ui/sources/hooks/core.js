@@ -95,7 +95,7 @@ class Memory {
  * 	core: CoreInfo,
  * 	audio: CoreState<boolean>,
  * 	speed: CoreState<number>,
- * 	gamepad: CoreState<boolean>,
+ * 	inputMode: CoreState<string>,
  * ]}
  */
 export const useCore = (lib) => {
@@ -134,7 +134,9 @@ export const useCore = (lib) => {
 
 	const [audio,    initAudio,    setAudio]    = useStatus(lib, 'audio',    true, update, (value) => core.audio(value));
 	const [speed,    initSpeed,    setSpeed]    = useStatus(lib, 'speed',    1,    update, (value) => core.speed(value));
-	const [gamepad,  initGamepad,  setGamepad]  = useStatus(lib, 'gamepad',  true, update);
+	const [inputMode, initInputMode, setInputMode] = useStatus(
+		lib, 'input_mode', 'auto', update, (value) => core.inputMode(value == 'direct')
+	);
 
 	/**
 	 * @param {string} system
@@ -160,7 +162,7 @@ export const useCore = (lib) => {
 
 			initAudio(settings);
 			initSpeed(settings);
-			initGamepad(settings);
+			initInputMode(settings);
 
 		} finally {
 			await loaded();
@@ -171,6 +173,6 @@ export const useCore = (lib) => {
 		{ current: core, variables, settings, cheats, init, update },
 		{ value: audio,    set: (value) => setAudio(value)    },
 		{ value: speed,    set: (value) => setSpeed(value)    },
-		{ value: gamepad,  set: (value) => setGamepad(value)  },
+		{ value: inputMode, set: (value) => setInputMode(value) },
 	]
 }

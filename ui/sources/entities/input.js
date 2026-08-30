@@ -52,7 +52,7 @@ export class InputMessage {
 	/**
 	 * @returns {number}
 	 */
-	static #size() { return 12; };
+	static #size() { return 16; };
 
 	/**
 	 * @param {WebAssembly.Instance} instance
@@ -71,6 +71,8 @@ export class InputMessage {
 			view.setUint32(offset + 0, message.device, true);
 			view.setUint32(offset + 4, message.id,     true);
 			view.setInt16 (offset + 8, message.value,  true);
+			view.setUint16(offset + 10, message.modifiers ?? 0, true);
+			view.setUint32(offset + 12, message.character ?? 0, true);
 
 			offset += this.#size();
 		}

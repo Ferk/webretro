@@ -1,5 +1,5 @@
 import { IonAccordion, IonAccordionGroup, IonButton, IonButtons, IonCheckbox, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuButton, IonPage, IonSegment, IonSegmentButton, IonSelect, IonSelectOption, IonTitle, IonToolbar, useIonAlert } from '@ionic/react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { checkmarkOutline } from 'ionicons/icons';
 import { useSize } from '../hooks/size';
 import { useCore } from '../hooks/core';
@@ -143,6 +143,8 @@ const Control = ({ name, id, type, inset }) => {
 	return <button style={style} data-id={id}>{name}</button>;
 }
 
+const hasTouchInput = () => navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
+
 /**
  * @param {Object} parameters
  * @param {System} parameters.system
@@ -156,10 +158,17 @@ export const CoreModal = ({ system, game, close }) => {
 	const menu = useRef(/** @type {HTMLIonMenuElement}       */ (null));
 	const hardware = useRef(new Input());
 	const menuOpen = useRef(false);
+	const mouseCaptured = useRef(false);
+	const releasingPointerLock = useRef(false);
+	const paused = useRef(false);
 
-	const [core, audio, speed, gamepad] = useCore(system.lib_name);
+	const [core, audio, speed, inputMode] = useCore(system.lib_name);
+	const activeInputMode = useRef(inputMode.value);
+	activeInputMode.current = inputMode.value;
+	const [autoOverlay, setAutoOverlay] = useState(hasTouchInput);
 	const [window_w, window_h] = useSize({ current: document.body });
 	const [canvas_w, canvas_h] = useSize(canvas);
+	const overlay = inputMode.value == 'overlay' || (inputMode.value == 'auto' && autoOverlay);
 
 	const [alert] = useIonAlert();
 
@@ -192,7 +201,16 @@ export const CoreModal = ({ system, game, close }) => {
 		const width = canvas.current.width;
 		const height = canvas.current.height;
 
-		gamepad.value
+		if (inputMode.value == 'auto' && event.type == 'touchstart')
+			setAutoOverlay(true);
+
+		if (inputMode.value == 'direct') {
+			if (event.type == 'mousedown')
+				requestMouseCapture();
+			return;
+		}
+
+		overlay
 			? core.current.press(touches, buttons)
 			: core.current.touch(touches[0], rect, width, height);
 	}
@@ -219,24 +237,76 @@ export const CoreModal = ({ system, game, close }) => {
 		if (isEditable(event.target))
 			return;
 
-		const messages = hardware.current.keyboard(event);
+		if (inputMode.value == 'auto' && event.type == 'keydown')
+			setAutoOverlay(false);
+
+		const messages = inputMode.value == 'direct'
+			? hardware.current.directKeyboard(event)
+			: hardware.current.keyboard(event);
 		if (messages.length)
 			core.current.input(messages);
 	}
 
 	/** @returns {void} */
 	const releaseKeyboard = () => {
-		const messages = hardware.current.releaseKeyboard();
+		const messages = [
+			...hardware.current.releaseKeyboard(),
+			...hardware.current.releaseDirectKeyboard(),
+		];
 		if (messages.length)
 			core.current.input(messages);
+	}
+
+	/** @param {string} mode @returns {void} */
+	const syncPause = (mode = activeInputMode.current) => {
+		const shouldPause = menuOpen.current || (mode == 'direct' && !mouseCaptured.current);
+		if (paused.current == shouldPause)
+			return;
+
+		paused.current = shouldPause;
+		releaseKeyboard();
+		core.current?.pause(shouldPause);
+		shouldPause ? AudioPlayer.pause() : AudioPlayer.resume();
+	}
+
+	/** @returns {void} */
+	const requestMouseCapture = (mode = activeInputMode.current) => {
+		if (mode != 'direct' || menuOpen.current || mouseCaptured.current)
+			return;
+
+		const request = canvas.current?.requestPointerLock?.();
+		request?.catch?.(() => syncPause());
 	}
 
 	/** @param {boolean} paused @returns {void} */
 	const setPaused = (paused) => {
 		menuOpen.current = paused;
-		releaseKeyboard();
-		core.current?.pause(paused);
-		paused ? AudioPlayer.pause() : AudioPlayer.resume();
+		if (paused && document.pointerLockElement == canvas.current) {
+			releasingPointerLock.current = true;
+			document.exitPointerLock();
+		}
+		syncPause();
+
+		if (!paused)
+			requestMouseCapture();
+	}
+
+	/** @param {CustomEvent} event @returns {void} */
+	const setInputMode = (event) => {
+		const mode = event.detail.value;
+		activeInputMode.current = mode;
+		inputMode.set(mode);
+
+		if (mode == 'direct') {
+			mouseCaptured.current = document.pointerLockElement == canvas.current;
+			syncPause(mode);
+			return;
+		}
+
+		if (document.pointerLockElement == canvas.current)
+			document.exitPointerLock();
+		mouseCaptured.current = false;
+		syncPause(mode);
 	}
 
 	/** @returns {void} */
@@ -255,6 +325,8 @@ export const CoreModal = ({ system, game, close }) => {
 		(async () => {
 			try {
 				await core.init(system.name, game.rom, system.contentRequired, canvas.current).then(() => resize());
+				paused.current = null;
+				syncPause();
 			} catch (e) {
 				console.error(e);
 				const error = explainStartupError(e);
@@ -278,13 +350,68 @@ export const CoreModal = ({ system, game, close }) => {
 	}, [content?.current]);
 
 	useEffect(() => {
+		/** @param {MouseEvent} event @returns {void} */
+		const mouse = (event) => {
+			if (inputMode.value != 'direct' || menuOpen.current || !mouseCaptured.current)
+				return;
+
+			const messages = hardware.current.mouse(event);
+			if (messages.length)
+				core.current.input(messages);
+		};
+
+		// Pointer Lock retargets mouse events to the locked element. Listen at the
+		// window so relative movement reaches the core across browser implementations.
+		addEventListener('mousemove', mouse, true);
+		addEventListener('mousedown', mouse, true);
+		addEventListener('mouseup', mouse, true);
+
+		return () => {
+			removeEventListener('mousemove', mouse, true);
+			removeEventListener('mousedown', mouse, true);
+			removeEventListener('mouseup', mouse, true);
+		};
+	}, [inputMode.value]);
+
+	useEffect(() => {
+		if (inputMode.value == 'auto')
+			setAutoOverlay(hasTouchInput());
+
+		if (inputMode.value != 'direct') {
+			if (document.pointerLockElement == canvas.current)
+				document.exitPointerLock();
+			mouseCaptured.current = false;
+		}
+		syncPause();
+	}, [inputMode.value]);
+
+	useEffect(() => {
+		const pointerLockChanged = () => {
+			const captured = document.pointerLockElement == canvas.current;
+			const expectedRelease = releasingPointerLock.current;
+			mouseCaptured.current = captured;
+			releasingPointerLock.current = false;
+			syncPause();
+
+			if (!captured && !expectedRelease && !menuOpen.current && activeInputMode.current == 'direct')
+				menu.current?.open();
+		};
+
+		document.addEventListener('pointerlockchange', pointerLockChanged);
+		return () => document.removeEventListener('pointerlockchange', pointerLockChanged);
+	}, []);
+
+	useEffect(() => {
 		let frame = 0;
 		let stopped = false;
 
 		const poll = () => {
 			const messages = hardware.current.gamepad();
 
-			if (messages.length)
+			if (inputMode.value == 'auto' && messages.some(message => message.value))
+				setAutoOverlay(false);
+
+			if (messages.length && inputMode.value != 'direct')
 				core.current.input(messages);
 
 			if (!stopped)
@@ -297,7 +424,7 @@ export const CoreModal = ({ system, game, close }) => {
 			stopped = true;
 			cancelAnimationFrame(frame);
 		};
-	}, []);
+	}, [inputMode.value]);
 
 	useEffect(() => {
 		addEventListener('keydown', keyboard, true);
@@ -309,7 +436,7 @@ export const CoreModal = ({ system, game, close }) => {
 			removeEventListener('keyup', keyboard);
 			removeEventListener('blur', releaseKeyboard);
 		};
-	}, []);
+	}, [inputMode.value]);
 
 	useEffect(() => resize(), [core.current?.aspect_ratio, window_w, window_h, canvas_w, canvas_h]);
 
@@ -338,7 +465,14 @@ export const CoreModal = ({ system, game, close }) => {
 							<IonCheckbox checked={audio.value} onIonChange={e => audio.set(e.detail.checked)}>Enable audio</IonCheckbox>
 						</IonItem>
 						<IonItem>
-							<IonCheckbox checked={gamepad.value} onIonChange={e => gamepad.set(e.detail.checked)}>Show gamepad</IonCheckbox>
+							<IonSelect label="Input mode" interface="action-sheet" value={inputMode.value}
+								onIonChange={setInputMode}>
+								<IonSelectOption value="auto">Auto</IonSelectOption>
+								<IonSelectOption value="overlay">Gamepad overlay</IonSelectOption>
+								<IonSelectOption value="keyboard">Gamepad Keyboard</IonSelectOption>
+								{system.directKeyboardMouse &&
+									<IonSelectOption value="direct">Direct Keyboard/Mouse</IonSelectOption>}
+							</IonSelect>
 						</IonItem>
 						<IonAccordionGroup>
 							<SettingsView variables={core.variables} settings={core.settings} update={core.update}></SettingsView>
@@ -366,7 +500,7 @@ export const CoreModal = ({ system, game, close }) => {
 					onTouchStart={touch} onTouchMove={touch} onTouchEnd={touch} onTouchCancel={touch}>
 					<canvas ref={canvas} />
 
-					{gamepad.value && <div className="controls"><div>
+					{overlay && <div className="controls"><div>
 						<Control name="A"        device={Input.Device.JOYPAD} id={Input.Joypad.A}     type='generic'  inset={{bottom: 30, right: 4 }} />
 						<Control name="B"        device={Input.Device.JOYPAD} id={Input.Joypad.B}     type='generic'  inset={{bottom: 18, right: 16}} />
 						<Control name="X"        device={Input.Device.JOYPAD} id={Input.Joypad.X}     type='generic'  inset={{bottom: 42, right: 16}} />

@@ -34,6 +34,7 @@
 	"dosbox": {
 		"name": "DOSBox Pure",
 		"repository": "dosbox-pure",
+		"directKeyboardMouse": true,
 		"outputVariable": "OUTNAME",
 		"buildFlags": ["NO_EXCEPTIONS=1"],
 		"patches": ["cores/patches/dosbox-pure/wasi-no-cxx-exceptions.patch"],

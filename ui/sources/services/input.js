@@ -16,6 +16,9 @@ export default class Input {
 	/** @type {{[key: number]: boolean}} */
 	#keyboard = {};
 
+	/** @type {{[key: number]: boolean}} */
+	#directKeyboard = {};
+
 	/**
 	 * @param {DOMRect} rect
 	 * @param {number} x
@@ -180,9 +183,73 @@ export default class Input {
 		return messages;
 	}
 
+	/**
+	 * @param {KeyboardEvent} event
+	 * @returns {InputMessage[]}
+	 */
+	directKeyboard(event) {
+		const id = Input.Keyboard.direct(event);
+		if (id == null)
+			return [];
+
+		event.preventDefault();
+
+		const value = event.type == 'keydown';
+		if (this.#directKeyboard[id] == value)
+			return [];
+
+		this.#directKeyboard[id] = value;
+		const modifiers =
+			(event.shiftKey ? 0x01 : 0) |
+			(event.ctrlKey ? 0x02 : 0) |
+			(event.altKey ? 0x04 : 0) |
+			(event.metaKey ? 0x08 : 0) |
+			(event.getModifierState?.('CapsLock') ? 0x10 : 0) |
+			(event.getModifierState?.('NumLock') ? 0x20 : 0) |
+			(event.getModifierState?.('ScrollLock') ? 0x40 : 0);
+		const character = value && event.key.length == 1 ? event.key.codePointAt(0) : 0;
+		return [{ device: Input.Device.KEYBOARD, id, value, modifiers, character }];
+	}
+
+	/** @returns {InputMessage[]} */
+	releaseDirectKeyboard() {
+		const messages = Object.entries(this.#directKeyboard)
+			.filter(([, value]) => value)
+			.map(([id]) => ({ device: Input.Device.KEYBOARD, id: Number(id), value: false }));
+		this.#directKeyboard = {};
+		return messages;
+	}
+
+	/**
+	 * @param {MouseEvent} event
+	 * @returns {InputMessage[]}
+	 */
+	mouse(event) {
+		const messages = [];
+
+		if (event.type == 'mousemove') {
+			if (event.movementX)
+				messages.push({ device: Input.Device.MOUSE, id: Input.Mouse.X, value: event.movementX });
+			if (event.movementY)
+				messages.push({ device: Input.Device.MOUSE, id: Input.Mouse.Y, value: event.movementY });
+		}
+
+		const buttons = {
+			0: Input.Mouse.LEFT,
+			1: Input.Mouse.MIDDLE,
+			2: Input.Mouse.RIGHT,
+		};
+		if (buttons[event.button] != null && event.type != 'mousemove')
+			messages.push({ device: Input.Device.MOUSE, id: buttons[event.button], value: event.type == 'mousedown' });
+
+		return messages;
+	}
+
 
 	static Device = class {
 		static get JOYPAD()  { return 1; }
+		static get MOUSE()   { return 2; }
+		static get KEYBOARD(){ return 3; }
 		static get POINTER() { return 6; }
 	}
 
@@ -216,6 +283,14 @@ export default class Input {
 		static get COUNT()   { return 3; }
 	}
 
+	static Mouse = class {
+		static get X()      { return 0; }
+		static get Y()      { return 1; }
+		static get LEFT()   { return 2; }
+		static get RIGHT()  { return 3; }
+		static get MIDDLE() { return 6; }
+	}
+
 	static Keyboard = class {
 		static BUTTONS = {
 			ArrowUp: Input.Joypad.UP,
@@ -239,6 +314,29 @@ export default class Input {
 		 */
 		static map(event) {
 			return this.BUTTONS[event.code] ?? this.BUTTONS[event.key];
+		}
+
+		/** @param {KeyboardEvent} event @returns {number} */
+		static direct(event) {
+			const special = {
+				Backspace: 8, Tab: 9, Enter: 13, Escape: 27, Space: 32,
+				ArrowUp: 273, ArrowDown: 274, ArrowRight: 275, ArrowLeft: 276,
+				Insert: 277, Home: 278, End: 279, PageUp: 280, PageDown: 281,
+				CapsLock: 301, ScrollLock: 302,
+				ShiftLeft: 304, ShiftRight: 303,
+				ControlLeft: 306, ControlRight: 305,
+				AltLeft: 308, AltRight: 307,
+			};
+			if (special[event.code] != null)
+				return special[event.code];
+
+			const functionKey = event.code.match(/^F(1[0-5]|[1-9])$/);
+			if (functionKey)
+				return 281 + Number(functionKey[1]);
+
+			return event.key.length == 1 && event.key.charCodeAt(0) < 128
+				? event.key.toLowerCase().charCodeAt(0)
+				: null;
 		}
 	}
 }

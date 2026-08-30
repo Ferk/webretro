@@ -59,6 +59,15 @@ static struct CTX {
 	uint8_t speed;
 	atomic_bool paused;
 	bool inputs[GAMEJIN_JOYPAD_INPUT_COUNT];
+	bool keyboard[RETROK_LAST];
+	struct retro_keyboard_callback keyboard_callback;
+	struct {
+		int16_t pending_x;
+		int16_t pending_y;
+		int16_t x;
+		int16_t y;
+		bool buttons[RETRO_DEVICE_ID_MOUSE_BUTTON_5 + 1];
+	} mouse;
 	bool variables_update;
 
 	struct {
@@ -186,6 +195,22 @@ static bool environment(unsigned cmd, void *data)
 		}
 		case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS & ~RETRO_ENVIRONMENT_EXPERIMENTAL:
 			return true;
+		case RETRO_ENVIRONMENT_GET_INPUT_DEVICE_CAPABILITIES: {
+			uint64_t *capabilities = data;
+
+			*capabilities =
+				(1ULL << RETRO_DEVICE_JOYPAD) |
+				(1ULL << RETRO_DEVICE_MOUSE) |
+				(1ULL << RETRO_DEVICE_KEYBOARD) |
+				(1ULL << RETRO_DEVICE_POINTER);
+			return true;
+		}
+		case RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK: {
+			struct retro_keyboard_callback *callback = data;
+
+			CTX.keyboard_callback = callback ? *callback : (struct retro_keyboard_callback) {0};
+			return true;
+		}
 		case RETRO_ENVIRONMENT_GET_LOG_INTERFACE: {
 			struct retro_log_callback *callback = data;
 
@@ -407,7 +432,10 @@ static void audio_sample(int16_t left, int16_t right)
 
 static void input_poll()
 {
-	// NOOP
+	CTX.mouse.x = CTX.mouse.pending_x;
+	CTX.mouse.y = CTX.mouse.pending_y;
+	CTX.mouse.pending_x = 0;
+	CTX.mouse.pending_y = 0;
 }
 
 static int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
@@ -439,6 +467,20 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
 				return (((double) CTX.pointer.x * 0x10000) / (double) CTX.video.width) - 0x8000;
 			case RETRO_DEVICE_ID_POINTER_Y:
 				return (((double) CTX.pointer.y * 0x10000) / (double) CTX.video.height) - 0x8000;
+		}
+	}
+
+	if (device == RETRO_DEVICE_KEYBOARD)
+		return id < RETROK_LAST ? CTX.keyboard[id] : 0;
+
+	if (device == RETRO_DEVICE_MOUSE) {
+		switch (id) {
+			case RETRO_DEVICE_ID_MOUSE_X:
+				return CTX.mouse.x;
+			case RETRO_DEVICE_ID_MOUSE_Y:
+				return CTX.mouse.y;
+			default:
+				return id <= RETRO_DEVICE_ID_MOUSE_BUTTON_5 && CTX.mouse.buttons[id];
 		}
 	}
 
@@ -838,6 +880,14 @@ void GamejinSetPaused(bool paused)
 	atomic_store(&CTX.paused, paused);
 }
 
+void GamejinSetInputMode(bool direct_keyboard_mouse)
+{
+	CTX.sym.retro_set_controller_port_device(
+		0,
+		direct_keyboard_mouse ? RETRO_DEVICE_KEYBOARD : RETRO_DEVICE_JOYPAD
+	);
+}
+
 void GamejinSetSpeed(uint8_t speed)
 {
 	CTX.speed = speed;
@@ -854,12 +904,36 @@ void GamejinSetInputs(const GamejinInput *inputs, size_t count)
 		core_lock();
 
 	for (size_t i = 0; i < count; i++) {
-		GamejinInputDevice device = inputs[i].device;
-		GamejinInputID id = inputs[i].id;
-		int16_t value = inputs[i].value;
+		const GamejinInput *input = &inputs[i];
+		GamejinInputDevice device = input->device;
+		GamejinInputID id = input->id;
+		int16_t value = input->value;
 
 		if (device == RETRO_DEVICE_JOYPAD && id < GAMEJIN_JOYPAD_INPUT_COUNT) {
 			CTX.inputs[id] = value;
+			continue;
+		}
+
+		if (device == RETRO_DEVICE_KEYBOARD && id < RETROK_LAST) {
+			CTX.keyboard[id] = value;
+			if (CTX.keyboard_callback.callback)
+				CTX.keyboard_callback.callback(value, id, input->character, input->modifiers);
+			continue;
+		}
+
+		if (device == RETRO_DEVICE_MOUSE) {
+			switch (id) {
+				case RETRO_DEVICE_ID_MOUSE_X:
+					CTX.mouse.pending_x += value;
+					break;
+				case RETRO_DEVICE_ID_MOUSE_Y:
+					CTX.mouse.pending_y += value;
+					break;
+				default:
+					if (id <= RETRO_DEVICE_ID_MOUSE_BUTTON_5)
+						CTX.mouse.buttons[id] = value;
+					break;
+			}
 			continue;
 		}
 

@@ -4,6 +4,8 @@
 
 typedef enum {
 	GAMEJIN_DEVICE_JOYPAD  = RETRO_DEVICE_JOYPAD,
+	GAMEJIN_DEVICE_MOUSE   = RETRO_DEVICE_MOUSE,
+	GAMEJIN_DEVICE_KEYBOARD = RETRO_DEVICE_KEYBOARD,
 	GAMEJIN_DEVICE_POINTER = RETRO_DEVICE_POINTER,
 } GamejinInputDevice;
 
@@ -90,6 +92,8 @@ typedef struct {
 	GamejinInputDevice device;
 	GamejinInputID id;
 	int16_t value;
+	uint16_t modifiers;
+	uint32_t character;
 } GamejinInput;
 
 typedef struct {
@@ -110,6 +114,7 @@ void GamejinDestroy();
 
 void GamejinSetAudio(bool enable);
 void GamejinSetPaused(bool paused);
+void GamejinSetInputMode(bool direct_keyboard_mouse);
 void GamejinSetSpeed(uint8_t speed);
 void GamejinSetInput(GamejinInputDevice device, GamejinInputID id, int16_t value);
 void GamejinSetInputs(const GamejinInput *inputs, size_t count);

@@ -181,6 +181,9 @@ export default class Core {
 	/** @param {boolean} paused @returns {Promise<void>} */
 	async pause(paused) { await this.#interop?.pause(paused); }
 
+	/** @param {boolean} directKeyboardMouse @returns {Promise<void>} */
+	async inputMode(directKeyboardMouse) { await this.#interop?.inputMode(directKeyboardMouse); }
+
 	/** @param {number} value @returns {Promise<void>} */
 	async speed(value) { await this.#interop?.speed(value); }
 

@@ -232,6 +232,7 @@ export default class Interop {
 
 		this.#wrap('SetAudio',           null,      ['boolean']);
 		this.#wrap('SetPaused',          null,      ['boolean']);
+		this.#wrap('SetInputMode',       null,      ['boolean']);
 		this.#wrap('SetSpeed',           null,      ['number']);
 		this.#wrap('SetInput',           null,      ['number', 'number', 'number']);
 		this.#wrap('SetInputs',          null,      ['number', 'number']);
@@ -310,6 +311,9 @@ export default class Interop {
 
 	/** @param {boolean} paused @returns {Promise<void>} */
 	pause(paused) { this.SetPaused(paused); }
+
+	/** @param {boolean} directKeyboardMouse @returns {Promise<void>} */
+	inputMode(directKeyboardMouse) { this.SetInputMode(directKeyboardMouse); }
 
 	/** @param {number} value @returns {Promise<void>} */
 	speed(value) { this.SetSpeed(value); }

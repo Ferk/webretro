@@ -25,6 +25,9 @@ export class System {
 	/** @type {boolean} */
 	contentRequired;
 
+	/** @type {boolean} */
+	directKeyboardMouse;
+
 	/** @type {string[]} */
 	builtinGames;
 

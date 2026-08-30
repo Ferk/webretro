@@ -221,6 +221,7 @@ export default class Files {
 						needFullpath: metadata.needFullpath ?? discovered.needFullpath,
 						blockExtract: metadata.blockExtract ?? discovered.blockExtract,
 						contentRequired,
+						directKeyboardMouse: !!metadata.directKeyboardMouse,
 						builtinGames,
 						games: games.map(game => new Game(system, game.rom, false, false, game.metadata, game.size, game.source)),
 					});
