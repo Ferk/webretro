@@ -11,6 +11,10 @@ export default class Navigation {
 	static #syncing = false;
 	static #fallback = null;
 
+	static get closing() {
+		return this.#closing;
+	}
+
 	/** @param {() => boolean} fallback */
 	static start(fallback = null) {
 		this.#fallback = fallback;

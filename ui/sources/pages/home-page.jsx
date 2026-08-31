@@ -38,6 +38,20 @@ const sourceParts = (system, game) => {
 	};
 };
 
+const deepLinkPath = (value) => {
+	try {
+		return decodeURIComponent(value)
+			.replace(/^\.\//, '')
+			.replace(/^games\//i, '')
+			.replace(/\\/g, '/')
+			.toLowerCase();
+	} catch {
+		return value.toLowerCase();
+	}
+};
+
+const isHttpUrl = (value) => /^https?:\/\//i.test(value);
+
 /**
  * @param {string} rom
  * @returns {string}
@@ -229,6 +243,8 @@ export const HomePage = () => {
 	const modal = useRef(/** @type {() => void} */ (null));
 	const details = useRef(/** @type {() => void} */ (null));
 	const addGames = useRef(/** @type {() => void} */ (null));
+	const deepLinkHandled = useRef(false);
+	const deepLinkResolving = useRef(false);
 
 	const [systems, setSystems] = useState(/** @type {System[]} */ ([]));
 	const [system,  setSystem]  = useState(/** @type {System}   */ (null));
@@ -259,19 +275,47 @@ export const HomePage = () => {
 	const [present] = useToast(`Gamejin - ${version} (${build})`);
 
 	const update = async () => {
-		setSystems(await Requests.getSystems());
+		const availableSystems = await Requests.getSystems();
+		setSystems(availableSystems);
+		return availableSystems;
+	};
+
+	const clearGameLink = () => {
+		const url = new URL(location.href);
+		url.searchParams.delete('d');
+		history.replaceState(history.state, '', url);
 	};
 
 	const closeGame = () => {
+		if (Navigation.closing)
+			clearGameLink();
+		else if (modal.current)
+			addEventListener('popstate', clearGameLink, { once: true });
+		else
+			clearGameLink();
+
 		modal.current?.();
 		modal.current = null;
 		stop();
+		setSystem(null);
+		setGame(null);
 	};
 
-	const closeDetails = () => {
+	const closeDetails = (clearLink = true) => {
+		if (clearLink) {
+			if (Navigation.closing)
+				clearGameLink();
+			else if (details.current)
+				addEventListener('popstate', clearGameLink, { once: true });
+			else
+				clearGameLink();
+		}
+
 		details.current?.();
 		details.current = null;
 		hideDetails();
+		setDetailsSystem(null);
+		setDetailsGame(null);
 	};
 
 	const closeAddGames = () => {
@@ -281,7 +325,7 @@ export const HomePage = () => {
 	};
 
 	const play = (system, game) => {
-		closeDetails();
+		closeDetails(false);
 		setSystem(system);
 		setGame(game);
 		start({ cssClass: 'fullscreen' });
@@ -360,6 +404,93 @@ export const HomePage = () => {
 		showAddGames({ cssClass: 'add-games-modal' });
 		addGames.current = Navigation.push(closeAddGames);
 	};
+
+	const findLinkedGame = (value, availableSystems) => {
+		const path = deepLinkPath(value);
+		const games = availableSystems.flatMap(candidate => candidate.games.map(candidateGame => ({
+			system: candidate,
+			game: candidateGame,
+		})));
+		const matches = games.filter(({ system: candidate, game: candidateGame }) => {
+			const paths = [
+				candidateGame.rom,
+				candidateGame.source,
+				gameUrl(candidate, candidateGame),
+			].filter(Boolean).map(deepLinkPath);
+
+			return paths.includes(path) || paths.some(candidatePath => candidatePath.endsWith(`/${path}`));
+		});
+
+		return matches.length == 1 ? matches[0] : null;
+	};
+
+	const scanLinkedGame = async (value, availableSystems) => {
+		if (!isHttpUrl(value))
+			return null;
+
+		const manifest = await Requests.scanSource(value);
+		const matches = Object.entries(manifest).flatMap(([platform, entries]) => {
+			const candidate = availableSystems.find(item => item.name == platform);
+			if (!candidate)
+				return [];
+
+			return entries.map(entry => {
+				const game = typeof entry == 'string'
+					? new Game(candidate, entry, false)
+					: new Game(candidate, entry.rom, false, false, entry.metadata, entry.size, entry.source);
+				return { system: candidate, game };
+			});
+		});
+
+		return matches.length == 1 ? matches[0] : null;
+	};
+
+	const openDeepLink = async (value, availableSystems) => {
+		try {
+			const linked = findLinkedGame(value, availableSystems) ?? await scanLinkedGame(value, availableSystems);
+			if (!linked) {
+				clearGameLink();
+				alert({ header: 'Game not found', message: value, buttons: ['OK'] });
+				return;
+			}
+
+			openDetails(linked.system, linked.game);
+			if (!linked.game.installed && !linked.game.builtin && await download(linked.system, linked.game))
+				installDetailsGame(linked.system, linked.game);
+		} catch (error) {
+			console.error(error);
+			clearGameLink();
+			alert({ header: 'Game link failed', message: error.message ?? value, buttons: ['OK'] });
+		} finally {
+			deepLinkResolving.current = false;
+		}
+	};
+
+	useEffect(() => {
+		const value = new URLSearchParams(location.search).get('d');
+		if (!value || deepLinkHandled.current)
+			return;
+
+		deepLinkHandled.current = true;
+		deepLinkResolving.current = true;
+		update().then(availableSystems => openDeepLink(value, availableSystems));
+	}, []);
+
+	useEffect(() => {
+		const selectedSystem = detailsSystem ?? system;
+		const selectedGame = detailsGame ?? game;
+		const url = new URL(location.href);
+
+		if (!selectedSystem && !selectedGame && deepLinkResolving.current)
+			return;
+
+		if (selectedSystem && selectedGame)
+			url.searchParams.set('d', gameUrl(selectedSystem, selectedGame));
+		else
+			url.searchParams.delete('d');
+
+		history.replaceState(history.state, '', url);
+	}, [detailsSystem, detailsGame, system, game]);
 
 	useIonViewWillEnter(update);
 
