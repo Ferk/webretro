@@ -1,0 +1,66 @@
+From 85a3489ca34960bf7c85cfab94559ce363d60df9 Mon Sep 17 00:00:00 2001
+From: Gamejin <gamejin@localhost>
+Date: Mon, 8 Sep 2026 00:00:00 +0200
+Subject: [PATCH 2/2] Protect Fennel Lua calls on WASM
+
+Fennel setup uses lua_call for code which can raise a Lua error. On the
+WASI build, that unprotected longjmp escapes into WebAssembly and traps with
+"unreachable executed". Route those calls through lua_pcall so the core can
+report a regular cartridge error instead.
+---
+ core/src/api/fennel.c | 16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/core/src/api/fennel.c b/core/src/api/fennel.c
+index 2e7255c7..e4615396 100644
+--- a/core/src/api/fennel.c
++++ b/core/src/api/fennel.c
+@@ -43,6 +43,16 @@ static const char* execute_fennel_src = FENNEL_CODE(
+   if(not ok) then return msg end
+ );
+ 
++static bool fennel_pcall(tic_core* core, lua_State* lua, int args, int results)
++{
++    if(lua_pcall(lua, args, results, 0) == LUA_OK)
++        return true;
++
++    const char* error = lua_tostring(lua, -1);
++    core->data->error(core->data->data, error ? error : "Fennel execution failed");
++    return false;
++}
++
+ static bool initFennel(tic_mem* tic, const char* code)
+ {
+     tic_core* core = (tic_core*)tic;
+@@ -61,7 +71,8 @@ static bool initFennel(tic_mem* tic, const char* code)
+             return false;
+         }
+ 
+-        lua_call(fennel, 0, 0);
++        if(!fennel_pcall(core, fennel, 0, 0))
++            return false;
+ 
+         if (luaL_loadbuffer(fennel, execute_fennel_src, strlen(execute_fennel_src), "execute_fennel") != LUA_OK)
+         {
+@@ -70,7 +81,8 @@ static bool initFennel(tic_mem* tic, const char* code)
+         }
+ 
+         lua_pushstring(fennel, code);
+-        lua_call(fennel, 1, 1);
++        if(!fennel_pcall(core, fennel, 1, 1))
++            return false;
+         const char* err = lua_tostring(fennel, -1);
+ 
+         if (err)
+@@ -178,7 +190,8 @@ static void evalFennel(tic_mem* tic, const char* code) {
+     }
+ 
+     lua_pushstring(fennel, code);
+-    lua_call(fennel, 1, 1);
++    if(!fennel_pcall(core, fennel, 1, 1))
++        return;
+     const char* err = lua_tostring(fennel, -1);
+ 
+     if (err)
+-- 
+2.55.0
