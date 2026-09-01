@@ -279,7 +279,7 @@ export default class Files {
 		 * @returns {Promise<Save[]>}
 		 */
 		static async get() {
-			const paths = (await Files.list()).filter(path => path.split('/').length == 4);
+			const paths = (await Files.list()).filter(path => Path.parseSave(path)[0]);
 
 			return paths.map(path => new Save(path)).reduce((saves, save) => {
 				const found = saves.find(x => x.system == save.system && x.game == save.game);
@@ -363,7 +363,7 @@ export default class Files {
 			const files = [];
 
 			for (const path of paths) {
-				const [system_name, rom_name] = Path.parse(path);
+				const [system_name, rom_name] = Path.parseGame(path);
 				if (!system_name || !rom_name)
 					continue;
 

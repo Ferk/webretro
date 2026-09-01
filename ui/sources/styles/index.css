@@ -240,14 +240,20 @@
 }
 
 #root .game-details-info h2 {
-	margin: 0 0 10px;
+	margin: 0;
 	font-size: 1.35rem;
 	line-height: 1.2;
 }
 
+#root .game-details-platform {
+	margin: 4px 0 14px;
+	color: var(--ion-color-medium);
+	font-size: .9rem;
+}
+
 #root .game-details-plot {
 	margin: 0 0 14px;
-	color: var(--ion-color-medium);
+	color: var(--ion-text-color);
 	line-height: 1.45;
 }
 

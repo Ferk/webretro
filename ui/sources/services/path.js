@@ -26,7 +26,7 @@ export default class Path {
 	 * @returns {string}
 	 */
 	static game(system, game) {
-		return `/${system}/${game}`;
+		return `/.gamejin/games/${system}/${game}`;
 	}
 
 	/**
@@ -35,7 +35,35 @@ export default class Path {
 	 * @returns {string}
 	 */
 	static cheat(system, game) {
-		return `/${system}/${game}/${game}.cht`;
+		return `/.gamejin/cheats/${system}/${game}/${game}.cht`;
+	}
+
+	/**
+	 * @param {string} system
+	 * @param {string} game
+	 * @param {string} file
+	 * @returns {string}
+	 */
+	static save(system, game, file) {
+		return `/.gamejin/saves/${system}/${game}/${file}`;
+	}
+
+	/**
+	 * @param {string} path
+	 * @returns {[system: string, game: string]}
+	 */
+	static parseGame(path) {
+		const matches = path.match(/^\/\.gamejin\/games\/([^/]+)\/(.+)$/);
+		return [matches?.[1], matches?.[2]];
+	}
+
+	/**
+	 * @param {string} path
+	 * @returns {[system: string, game: string]}
+	 */
+	static parseSave(path) {
+		const matches = path.match(/^\/\.gamejin\/saves\/([^/]+)\/([^/]+)\/.+$/);
+		return [matches?.[1], matches?.[2]];
 	}
 
 	/**
@@ -43,8 +71,15 @@ export default class Path {
 	 * @returns {[system: string, game: string]}
 	 */
 	static parse(path) {
-		const matches = path.match(/^\/([^\/]+)\/(.+)$/);
-		return [ matches?.[1], matches?.[2] ];
+		const save = Path.parseSave(path);
+		if (save[0])
+			return save;
+
+		const cheat = path.match(/^\/\.gamejin\/cheats\/([^/]+)\/([^/]+)\/.+$/);
+		if (cheat)
+			return [cheat[1], cheat[2]];
+
+		return [null, null];
 	}
 
 	/**

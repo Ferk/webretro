@@ -179,10 +179,13 @@ const GameDetailsModal = ({ system, game, status, close, action }) => {
 	const thumbnails = thumbnailCandidates(system, game);
 	const available = game.installed || game.builtin;
 	const downloading = status.system == system.name && status.game == game.rom;
+	const platform = game.metadata?.platform || system.name;
 	const fields = [
 		['filename', 'Filename', game.rom],
 		['size', 'File size', formatSize(game.size)],
-		...Object.entries(game.metadata ?? {}).map(([key, value]) => [key, fieldLabel(key), value]),
+		...Object.entries(game.metadata ?? {})
+			.filter(([key]) => !['title', 'description', 'plot', 'platform'].includes(key.toLowerCase()))
+			.map(([key, value]) => [key, fieldLabel(key), value]),
 	].filter(([, , value]) => value);
 
 	return (
@@ -209,6 +212,7 @@ const GameDetailsModal = ({ system, game, status, close, action }) => {
 
 					<div className="game-details-info">
 						<h2>{Path.clean(game.title)}</h2>
+						<p className="game-details-platform">{platform}</p>
 						{game.metadata?.plot && <p className="game-details-plot">{game.metadata.plot}</p>}
 						<dl>
 							{fields.map(([key, label, value]) => (

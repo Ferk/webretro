@@ -582,13 +582,13 @@ static void create_paths(const char *system, const char *rom)
 {
 	char *game = remove_extension(rom);
 
-	CTX.paths[GAMEJIN_PATH_SYSTEM] = core_strfmt("/%s",             system);
-	CTX.paths[GAMEJIN_PATH_GAME] =   core_strfmt("/%s/%s",          system, rom);
-	CTX.paths[GAMEJIN_PATH_SAVES] =  core_strfmt("/%s/%s",          system, game);
-	CTX.paths[GAMEJIN_PATH_STATE] =  core_strfmt("/%s/%s/%s.state", system, game, game);
-	CTX.paths[GAMEJIN_PATH_SRAM] =   core_strfmt("/%s/%s/%s.srm",   system, game, game);
-	CTX.paths[GAMEJIN_PATH_RTC] =    core_strfmt("/%s/%s/%s.rtc",   system, game, game);
-	CTX.paths[GAMEJIN_PATH_CHEATS] = core_strfmt("/%s/%s/%s.cht",   system, game, game);
+	CTX.paths[GAMEJIN_PATH_SYSTEM] = core_strfmt("/.gamejin/games/%s",             system);
+	CTX.paths[GAMEJIN_PATH_GAME] =   core_strfmt("/.gamejin/games/%s/%s",          system, rom);
+	CTX.paths[GAMEJIN_PATH_SAVES] =  core_strfmt("/.gamejin/saves/%s/%s",          system, game);
+	CTX.paths[GAMEJIN_PATH_STATE] =  core_strfmt("/.gamejin/saves/%s/%s/%s.state", system, game, game);
+	CTX.paths[GAMEJIN_PATH_SRAM] =   core_strfmt("/.gamejin/saves/%s/%s/%s.srm",   system, game, game);
+	CTX.paths[GAMEJIN_PATH_RTC] =    core_strfmt("/.gamejin/saves/%s/%s/%s.rtc",   system, game, game);
+	CTX.paths[GAMEJIN_PATH_CHEATS] = core_strfmt("/.gamejin/cheats/%s/%s/%s.cht",  system, game, game);
 	CTX.game_name = strdup(game);
 	CTX.game_extension = get_extension(rom);
 
