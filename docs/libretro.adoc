@@ -1,0 +1,708 @@
+= Libretro support
+
+This document describes the subset of the libretro API implemented by the Gamejin frontend.
+It is intended as a practical compatibility reference for adding and debugging cores.
+
+Gamejin does not embed RetroArch.
+Each core is statically linked into a WebAssembly module together with the Gamejin bridge in `app/sources/gamejin.c`.
+The browser UI talks to that module through the exported `Gamejin*` functions and a small set of imported browser callbacks.
+
+== Execution model
+
+The frontend creates one WebAssembly module per core.
+The module exports a Gamejin wrapper API, not the libretro API directly.
+
+Most content-loading capabilities are discovered from the core at runtime.
+Gamejin probes each core before building the browser library list.
+The probe installs the environment callback, lets the core report no-content support, then calls `retro_get_system_info()`.
+
+The discovered values include:
+
+* `retro_system_info.valid_extensions`
+* `retro_system_info.need_fullpath`
+* `retro_system_info.block_extract`
+* `RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME`
+
+`cores/cores.json` is still used for frontend metadata and optional overrides.
+For example, libretro can report that a core supports no-content startup, but it cannot provide the launcher entry name to show in the games list.
+That is why `2048` keeps a `builtinGames` entry in `cores.json`.
+
+Set `directKeyboardMouse: true` for a core that accepts native libretro keyboard and mouse input. This makes the `Direct Keyboard/Mouse` launcher mode available for that core; Gamejin currently enables it for DOSBox Pure.
+
+The high-level lifecycle is:
+
+. `GamejinCreate(system, rom, contentRequired)`
+. `retro_set_environment(...)`
+. `retro_set_video_refresh(...)`
+. `retro_set_audio_sample(...)`
+. `retro_set_audio_sample_batch(...)`
+. `retro_set_input_poll(...)`
+. `retro_set_input_state(...)`
+. `GamejinStartGame()`
+. `retro_init()`
+. `retro_get_system_info()`
+. `retro_load_game(...)`
+. `retro_get_system_av_info()`
+. `retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD)`
+. repeated `retro_run()` calls on a worker thread
+. `GamejinDestroy()`
+. `retro_deinit()`
+
+The core is driven from a dedicated thread.
+Calls that mutate core state, such as settings, cheats, save states, and restore states, take the same internal lock used by `retro_run()`.
+
+== Required core symbols
+
+Cores are expected to provide the normal static libretro entry points.
+The bridge currently maps these symbols:
+
+[cols="1,2"]
+|===
+|Symbol |Frontend usage
+
+|`retro_init`
+|Called before loading content.
+
+|`retro_deinit`
+|Called when the game closes.
+
+|`retro_get_system_info`
+|Reads library metadata and content loading requirements.
+
+|`retro_get_system_av_info`
+|Reads initial geometry, FPS, and sample rate.
+
+|`retro_load_game`
+|Loads the selected game.
+
+|`retro_run`
+|Called repeatedly while the game is active.
+
+|`retro_set_environment`
+|Installs the frontend environment callback.
+
+|`retro_set_video_refresh`
+|Installs the video callback.
+
+|`retro_set_audio_sample`
+|Installs single-sample audio callback.
+
+|`retro_set_audio_sample_batch`
+|Installs batch audio callback.
+
+|`retro_set_input_poll`
+|Installed as a no-op callback.
+
+|`retro_set_input_state`
+|Installs the input state callback.
+
+|`retro_set_controller_port_device`
+|Sets port 0 to `RETRO_DEVICE_JOYPAD`.
+
+|`retro_get_memory_data`
+|Used for SRAM and RTC persistence.
+
+|`retro_get_memory_size`
+|Used for SRAM and RTC persistence.
+
+|`retro_serialize_size`
+|Used for save states.
+
+|`retro_serialize`
+|Used for save states.
+
+|`retro_unserialize`
+|Used for restoring save states.
+
+|`retro_cheat_reset`
+|Used when applying cheats.
+
+|`retro_cheat_set`
+|Used when applying cheats.
+|===
+
+`retro_reset` and `retro_unload_game` are currently mapped but not called by the frontend.
+
+== Content loading
+
+The game is stored in the browser-backed filesystem and exposed at:
+
+[source]
+----
+/.gamejin/games/<system>/<rom>
+----
+
+For example:
+
+[source]
+----
+/.gamejin/games/Game Boy Advance/Apotris.gba
+----
+
+The frontend supports both content loading styles:
+
+[cols="1,2"]
+|===
+|Core requirement |Behavior
+
+|`need_fullpath == false`
+|The frontend reads the game into memory and passes `retro_game_info.data` and `retro_game_info.size`.
+
+|`need_fullpath == true`
+|The frontend passes only `retro_game_info.path`; the core must open the file through the WASI filesystem.
+|===
+
+For cores that report `RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME`, or cores whose metadata overrides set `"contentRequired": false`, the frontend can launch without an installed game file.
+In that case, if no file exists at the computed game path, the bridge calls:
+
+[source,c]
+----
+retro_load_game(NULL)
+----
+
+This is used for no-content cores such as `2048`.
+
+The frontend also supports `RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE`.
+If a core provides an override matching the game's extension, `need_fullpath` and `persistent_data` are taken from that override.
+
+`RETRO_ENVIRONMENT_GET_GAME_INFO_EXT` is supported.
+The returned `retro_game_info_ext` includes:
+
+[cols="1,2"]
+|===
+|Field |Value
+
+|`full_path`
+|`/.gamejin/games/<system>/<rom>`
+
+|`dir`
+|`/.gamejin/games/<system>`
+
+|`name`
+|ROM filename without extension.
+
+|`ext`
+|Lowercase ROM extension without the dot.
+
+|`data`
+|Same data pointer as `retro_game_info.data`, when the game is memory-loaded.
+
+|`size`
+|Game size in bytes.
+
+|`persistent_data`
+|Value from the matching content info override, or `false`.
+|===
+
+== Video
+
+The frontend supports software video frames through `retro_video_refresh_t`.
+Hardware rendering contexts are not supported.
+
+Supported behavior:
+
+[cols="1,2"]
+|===
+|Feature |Behavior
+
+|Pixel format
+|Cores may call `RETRO_ENVIRONMENT_SET_PIXEL_FORMAT`.
+
+|Frame duplication
+|`RETRO_ENVIRONMENT_GET_CAN_DUPE` returns `true`.
+
+|Geometry changes
+|`RETRO_ENVIRONMENT_SET_GEOMETRY` is supported.
+
+|AV info changes
+|`RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO` is supported.
+
+|Null video frames
+|Ignored.
+|===
+
+The video callback sends the following data to the browser:
+
+[cols="1,2"]
+|===
+|Field |Meaning
+
+|`data`
+|Pointer to the core frame buffer.
+
+|`format`
+|Current `retro_pixel_format`.
+
+|`width`
+|Frame width.
+
+|`height`
+|Frame height.
+
+|`pitch`
+|Frame pitch in bytes.
+
+|`ratio`
+|`retro_game_geometry.aspect_ratio`, or `width / height` when the core reports no aspect ratio.
+|===
+
+== Audio
+
+Both `retro_audio_sample_t` and `retro_audio_sample_batch_t` are supported.
+Single samples are internally converted into one-frame batches.
+
+The frontend buffers audio until it has roughly one video frame of samples, then sends the batch to the browser audio worker.
+The reported playback rate is:
+
+[source]
+----
+retro_system_timing.sample_rate * speed
+----
+
+Audio can be enabled or disabled from the frontend.
+When disabled, the batch callback still returns the submitted frame count but does not forward samples to the browser.
+
+`RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE` is supported and reports both audio and video enabled.
+
+== Input
+
+The frontend currently supports port `0` only.
+All input on other ports returns `0`.
+
+Supported devices:
+
+[cols="1,2"]
+|===
+|Device |Support
+
+|`RETRO_DEVICE_JOYPAD`
+|Supported for port 0.
+
+|`RETRO_DEVICE_POINTER`
+|Supported for port 0.
+
+|`RETRO_DEVICE_KEYBOARD`
+|Supported when the user selects `Direct Keyboard/Mouse` for an eligible core.
+
+|`RETRO_DEVICE_MOUSE`
+|Supported when the user selects `Direct Keyboard/Mouse` for an eligible core.
+|===
+
+The frontend sets controller port 0 to `RETRO_DEVICE_JOYPAD` after loading the game.
+
+`retro_input_poll_t` is installed and snapshots relative mouse movement for the current core frame.
+Input state is pushed from the browser UI into the bridge and read by cores through `retro_input_state_t`.
+
+=== Joypad
+
+The following joypad IDs are represented by the Gamejin wrapper API:
+
+[cols="1,1"]
+|===
+|Libretro ID |Source
+
+|`RETRO_DEVICE_ID_JOYPAD_B`
+|On-screen controls and Web Gamepad API button 0.
+
+|`RETRO_DEVICE_ID_JOYPAD_A`
+|On-screen controls and Web Gamepad API button 1.
+
+|`RETRO_DEVICE_ID_JOYPAD_Y`
+|On-screen controls and Web Gamepad API button 2.
+
+|`RETRO_DEVICE_ID_JOYPAD_X`
+|On-screen controls and Web Gamepad API button 3.
+
+|`RETRO_DEVICE_ID_JOYPAD_L`
+|On-screen controls and Web Gamepad API button 4.
+
+|`RETRO_DEVICE_ID_JOYPAD_R`
+|On-screen controls and Web Gamepad API button 5.
+
+|`RETRO_DEVICE_ID_JOYPAD_SELECT`
+|On-screen controls and Web Gamepad API button 8.
+
+|`RETRO_DEVICE_ID_JOYPAD_START`
+|On-screen controls and Web Gamepad API button 9.
+
+|`RETRO_DEVICE_ID_JOYPAD_UP`
+|On-screen controls, Web Gamepad API button 12, or left stick Y < -0.5.
+
+|`RETRO_DEVICE_ID_JOYPAD_DOWN`
+|On-screen controls, Web Gamepad API button 13, or left stick Y > 0.5.
+
+|`RETRO_DEVICE_ID_JOYPAD_LEFT`
+|On-screen controls, Web Gamepad API button 14, or left stick X < -0.5.
+
+|`RETRO_DEVICE_ID_JOYPAD_RIGHT`
+|On-screen controls, Web Gamepad API button 15, or left stick X > 0.5.
+|===
+
+The wrapper defines IDs for `L2`, `R2`, `L3`, and `R3`, but the current browser UI does not send them.
+
+=== Pointer
+
+Pointer input is supported for cores that request pointer state through `retro_input_state_t`.
+The frontend stores pointer coordinates in screen pixels and converts them to libretro's signed coordinate range when queried:
+
+[source]
+----
+((pixel * 0x10000) / size) - 0x8000
+----
+
+Supported pointer IDs:
+
+[cols="1,2"]
+|===
+|ID |Behavior
+
+|`RETRO_DEVICE_ID_POINTER_PRESSED`
+|Current pressed state.
+
+|`RETRO_DEVICE_ID_POINTER_X`
+|Current pointer X in libretro coordinate space.
+
+|`RETRO_DEVICE_ID_POINTER_Y`
+|Current pointer Y in libretro coordinate space.
+|===
+
+=== Keyboard and mouse
+
+When `Direct Keyboard/Mouse` is selected, browser key events are exposed through both `RETRO_DEVICE_KEYBOARD` state queries and `RETRO_ENVIRONMENT_SET_KEYBOARD_CALLBACK`.
+Printable ASCII keys, common navigation keys, modifiers, and F1 through F15 are mapped to libretro key codes.
+Gamejin also selects `RETRO_DEVICE_KEYBOARD` for controller port 0 while that mode is active, allowing cores such as DOSBox Pure to leave their gamepad mapper.
+The game remains paused until the browser grants pointer lock to its canvas, and pauses again if that lock is released.
+
+Mouse movement is reported as relative `RETRO_DEVICE_ID_MOUSE_X` and `RETRO_DEVICE_ID_MOUSE_Y` values. Left, right, and middle buttons are supported through their corresponding mouse IDs.
+
+== Core options
+
+The frontend supports the legacy `RETRO_ENVIRONMENT_SET_VARIABLES` core option API.
+
+For each option, the value string is parsed in the usual libretro form:
+
+[source]
+----
+Description; default|other|values
+----
+
+The frontend stores:
+
+[cols="1,2"]
+|===
+|Field |Value
+
+|`key`
+|Variable key.
+
+|`name`
+|Text before the semicolon.
+
+|`options`
+|Text after the semicolon, without the leading space.
+
+|`value`
+|First pipe-separated option, used as the default.
+|===
+
+Supported option queries:
+
+[cols="1,2"]
+|===
+|Command |Behavior
+
+|`RETRO_ENVIRONMENT_GET_VARIABLE`
+|Returns the current value for a known key.
+
+|`RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE`
+|Returns whether the frontend changed any option since the last query, then clears the flag.
+|===
+
+Newer core option APIs, such as `RETRO_ENVIRONMENT_SET_CORE_OPTIONS`, are not currently implemented.
+
+== Saves and persistent memory
+
+The frontend persists save memory by polling the core once per second.
+It compares memory contents against the last saved copy before writing.
+
+Supported memory types:
+
+[cols="1,2"]
+|===
+|Memory type |Path
+
+|`RETRO_MEMORY_SAVE_RAM`
+|`/<system>/<game>/<game>.srm`
+
+|`RETRO_MEMORY_RTC`
+|`/<system>/<game>/<game>.rtc`
+|===
+
+The save directory reported to cores is:
+
+[source]
+----
+/<system>/<game>
+----
+
+The system directory reported to cores is:
+
+[source]
+----
+/<system>
+----
+
+== Save states
+
+Manual save states use libretro serialization:
+
+[cols="1,2"]
+|===
+|Operation |Libretro calls
+
+|Save
+|`retro_serialize_size()`, then `retro_serialize(data, size)`.
+
+|Restore
+|`retro_serialize_size()`, then `retro_unserialize(data, size)`.
+|===
+
+State files are written to:
+
+[source]
+----
+/.gamejin/saves/<system>/<game>/<game>.state
+----
+
+== Cheats
+
+Cheats are applied through:
+
+[source]
+----
+retro_cheat_reset()
+retro_cheat_set(index, enabled, code)
+----
+
+Before sending a cheat code to the core, spaces and newlines are replaced with `+`.
+
+== Environment callback support
+
+Supported environment commands:
+
+[cols="1,2"]
+|===
+|Command |Behavior
+
+|`RETRO_ENVIRONMENT_SET_PIXEL_FORMAT`
+|Stores the requested software pixel format.
+
+|`RETRO_ENVIRONMENT_GET_CAN_DUPE`
+|Returns `true`.
+
+|`RETRO_ENVIRONMENT_GET_LOG_INTERFACE`
+|Provides a log callback. Logs are emitted in debug builds.
+
+|`RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY`
+|Returns `/.gamejin/games/<system>`.
+
+|`RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY`
+|Returns `/.gamejin/saves/<system>/<game>`.
+
+|`RETRO_ENVIRONMENT_GET_VFS_INTERFACE`
+|Provides the frontend VFS API through version 3. File access, truncation, stat, directory creation, and directory iteration use browser-backed persistent storage.
+
+|`RETRO_ENVIRONMENT_SET_MESSAGE`
+|Logs the message in debug builds.
+
+|`RETRO_ENVIRONMENT_SET_SUPPORT_NO_GAME`
+|Records whether the core supports `retro_load_game(NULL)`.
+
+|`RETRO_ENVIRONMENT_SET_VARIABLES`
+|Registers legacy core options.
+
+|`RETRO_ENVIRONMENT_GET_VARIABLE`
+|Reads legacy core option values.
+
+|`RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE`
+|Reports and clears the option update flag.
+
+|`RETRO_ENVIRONMENT_SET_CONTENT_INFO_OVERRIDE`
+|Stores content loading overrides.
+
+|`RETRO_ENVIRONMENT_GET_GAME_INFO_EXT`
+|Returns the current extended game info.
+
+|`RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE`
+|Reports audio and video enabled.
+
+|`RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO`
+|Replaces current AV info.
+
+|`RETRO_ENVIRONMENT_SET_GEOMETRY`
+|Replaces current geometry.
+|===
+
+Unsupported or stubbed environment commands:
+
+[cols="1,2"]
+|===
+|Command |Behavior
+
+|Any unlisted command
+|Returns `false` and logs `Unhandled command` in debug builds.
+|===
+
+== WASI filesystem support
+
+Core file IO and the libretro VFS interface are backed by the same browser-persistent filesystem in `ui/sources/services/wasi.js`.
+
+Implemented WASI imports include:
+
+[cols="1,1"]
+|===
+|Import |Notes
+
+|`clock_time_get`
+|Uses `performance.timeOrigin + performance.now()`.
+
+|`environ_get`
+|No environment variables.
+
+|`environ_sizes_get`
+|No environment variables.
+
+|`fd_close`
+|Removes the file descriptor.
+
+|`fd_fdstat_get`
+|Stub success.
+
+|`fd_fdstat_set_flags`
+|Stub success.
+
+|`fd_filestat_get`
+|Reports file or directory metadata.
+
+|`fd_filestat_set_size`
+|Truncates a file.
+
+|`fd_readdir`
+|Enumerates direct directory entries for VFS directory handles.
+
+|`fd_prestat_dir_name`
+|Reports `/`.
+
+|`fd_prestat_get`
+|Reports one preopened directory.
+
+|`fd_readdir`
+|Stub success.
+
+|`fd_renumber`
+|Moves an open descriptor.
+
+|`fd_seek`
+|Updates the descriptor offset.
+
+|`fd_tell`
+|Reports the descriptor offset.
+
+|`fd_pread`
+|Reads from browser storage without changing descriptor offset.
+
+|`fd_read`
+|Reads from browser storage and advances descriptor offset.
+
+|`fd_pwrite`
+|Writes to browser storage or logs stdout/stderr.
+
+|`fd_write`
+|Writes and advances descriptor offset for file descriptors above stderr.
+
+|`path_filestat_get`
+|Checks whether a path exists.
+
+|`path_open`
+|Opens an existing file, or creates it when `O_CREAT` is set.
+
+|`path_create_directory`
+|Creates a directory.
+
+|`path_remove_directory`
+|Removes a directory.
+
+|`path_unlink_file`
+|Removes a file.
+
+|`poll_oneoff`
+|Supports clock sleeps through `Atomics.wait`.
+
+|`proc_exit`
+|Throws an exception with the exit code.
+
+|`sched_yield`
+|Stub success.
+
+|`random_get`
+|Uses `crypto.getRandomValues`.
+|===
+
+== Browser and WebAssembly imports
+
+The WebAssembly module imports:
+
+[cols="1,2"]
+|===
+|Import |Purpose
+
+|`env.memory`
+|Shared WebAssembly memory.
+
+|`env.web_video`
+|Forwards video frames to the browser renderer.
+
+|`env.web_audio`
+|Forwards audio batches to the browser audio worker.
+
+|`env.web_variables`
+|Forwards registered core options to the UI.
+
+|`env.saveSetjmp`
+|Compatibility shim for Emscripten-style setjmp imports used by some cores.
+
+|`env.testSetjmp`
+|Compatibility shim for Emscripten-style setjmp imports used by some cores.
+
+|`env.getTempRet0`
+|Compatibility shim used with Emscripten-style setjmp imports.
+
+|`wasi.thread-spawn`
+|Creates a child worker for WASI threads.
+
+|`wasi_snapshot_preview1.*`
+|The WASI imports listed above.
+|===
+
+== Current limitations
+
+The frontend currently does not support:
+
+* Multiple input ports.
+* Analog input devices as analog devices.
+* Rumble.
+* Lightgun devices.
+* Microphone or camera input.
+* Hardware rendering contexts.
+* Disk control callbacks.
+* Subsystem loading.
+* Netplay.
+* RetroArch runahead or rewind APIs.
+* Achievement APIs.
+* Modern core options APIs.
+* Dynamic core loading at runtime.
+
+Some platform functions used by cores are stubbed in `app/sources/interop-web.c`.
+For example, socket operations return failure, some pthread scheduling calls return failure, and C++ exception throwing aborts.
+
+These stubs are compatibility aids for building existing cores, not full implementations of the corresponding platform APIs.

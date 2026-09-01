@@ -23,7 +23,8 @@ LDFLAGS := \
 
 OBJ := \
 	$(SRC_DIR)/gamejin.o \
-	$(SRC_DIR)/interop-web.o
+	$(SRC_DIR)/interop-web.o \
+	$(SRC_DIR)/vfs.o
 
 include ../GNUmakefile.common
 

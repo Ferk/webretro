@@ -55,6 +55,18 @@ export default class Filesystem {
 
 	/**
 	 * @param {string} path
+	 * @returns {Promise<{ name: string, directory: boolean }[]>}
+	 */
+	static async #entries(path) {
+		const directory = await Filesystem.#directory(`${path.replace(/\/$/, '')}/.`, false);
+		const entries = [];
+		for await (const handle of directory.values())
+			entries.push({ name: handle.name, directory: handle.kind == 'directory' });
+		return entries;
+	}
+
+	/**
+	 * @param {string} path
 	 * @param {(file: FileSystemSyncAccessHandle) => number} action
 	 * @returns {Promise<number>}
 	 */
@@ -103,6 +115,14 @@ export default class Filesystem {
 
 	/**
 	 * @param {string} path
+	 * @returns {{ name: string, directory: boolean }[] | Promise<{ name: string, directory: boolean }[]>}
+	 */
+	entries(path) {
+		return Filesystem.#catch(() => Filesystem.#entries(path), null, false);
+	}
+
+	/**
+	 * @param {string} path
 	 * @returns {number | Promise<number>}
 	 */
 	size(path) {
@@ -146,6 +166,20 @@ export default class Filesystem {
 	write(path, buffer, offset) {
 		return Filesystem.#catch(() => {
 			return Filesystem.#exec(path, true, (file) => file.write(buffer, { at: offset }));
+		}, -1);
+	}
+
+	/**
+	 * @param {string} path
+	 * @param {number} size
+	 * @returns {number | Promise<number>}
+	 */
+	truncate(path, size) {
+		return Filesystem.#catch(() => {
+			return Filesystem.#exec(path, false, file => {
+				file.truncate(size);
+				return 0;
+			});
 		}, -1);
 	}
 

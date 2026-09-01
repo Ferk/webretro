@@ -9,6 +9,7 @@
 #include <stdatomic.h>
 
 #include "interop.h"
+#include "vfs.h"
 #include "rthreads/rthreads.h"
 
 #define LOG(msg, ...) core_log_params(__FUNCTION__, msg, __VA_ARGS__)
@@ -242,7 +243,11 @@ static bool environment(unsigned cmd, void *data)
 		case RETRO_ENVIRONMENT_GET_VFS_INTERFACE & ~RETRO_ENVIRONMENT_EXPERIMENTAL: {
 			struct retro_vfs_interface_info *vfs = data;
 
-			return false;
+			if (!vfs || vfs->required_interface_version > 3)
+				return false;
+
+			vfs->iface = GamejinVfsInterface();
+			return true;
 		}
 		case RETRO_ENVIRONMENT_SET_MESSAGE: {
 			struct retro_message *message = data;

@@ -13,6 +13,7 @@ export default class WASI {
 	get #WHENCE_END() { return 2; }
 
 	get #O_CREAT() { return 9; }
+	get #O_DIRECTORY() { return 2; }
 
 	/** @type {WebAssembly.Memory} */
 	#memory = null;
@@ -82,12 +83,25 @@ export default class WASI {
 		new DataView(this.#memory.buffer).setBigUint64(ptr, BigInt(value), true);
 	}
 
+	#set_filestat(ptr, size, directory = false) {
+		const view = new DataView(this.#memory.buffer);
+		view.setBigUint64(ptr, 1n, true);
+		view.setBigUint64(ptr + 8, 1n, true);
+		view.setUint8(ptr + 16, directory ? 3 : 4);
+		view.setBigUint64(ptr + 24, 1n, true);
+		view.setBigUint64(ptr + 32, BigInt(size), true);
+	}
+
 	/**
 	 * @param {number} fd
 	 * @returns {{path: string, offset: number}}
 	 */
 	#fd(fd) {
 		return this.#fds[fd] ?? null;
+	}
+
+	#path(path) {
+		return path == '.' ? '/' : path;
 	}
 
 	/**
@@ -143,10 +157,25 @@ export default class WASI {
 				return this.#WASI_ERRNO_SUCCESS;
 			},
 			fd_filestat_get: (fd, buf) => {
+				const file = this.#fd(fd);
+				if (!file)
+					return this.#WASI_ERRNO_BADF;
+
+				const size = file.directory ? 0 : this.#filesystem.size(file.path);
+				if (size == -1)
+					return this.#WASI_ERRNO_NOENT;
+
+				this.#set_filestat(buf, size, file.directory);
 				return this.#WASI_ERRNO_SUCCESS;
 			},
 			fd_filestat_set_size: (fd, st_size) => {
-				return this.#WASI_ERRNO_SUCCESS;
+				const file = this.#fd(fd);
+				if (!file || file.directory)
+					return this.#WASI_ERRNO_BADF;
+
+				return this.#filesystem.truncate(file.path, Number(st_size)) == -1
+					? this.#WASI_ERRNO_NOENT
+					: this.#WASI_ERRNO_SUCCESS;
 			},
 			fd_prestat_dir_name: (fd, path, path_len) => {
 				if (this.#preopen == fd) {
@@ -168,6 +197,31 @@ export default class WASI {
 				return this.#WASI_ERRNO_BADF;
 			},
 			fd_readdir: (fd, buf, buf_len, cookie, bufused) => {
+				const directory = this.#fd(fd);
+				if (!directory?.directory)
+					return this.#WASI_ERRNO_BADF;
+
+				const entries = directory.entries ?? [];
+				let offset = 0;
+				let index = Number(cookie);
+				const view = new DataView(this.#memory.buffer);
+				const bytes = new Uint8Array(this.#memory.buffer);
+
+				for (; index < entries.length; index++) {
+					const name = new TextEncoder().encode(entries[index].name);
+					const length = 24 + name.length;
+					if (offset + length > buf_len)
+						break;
+
+					view.setBigUint64(buf + offset, BigInt(index + 1), true);
+					view.setBigUint64(buf + offset + 8, BigInt(index + 1), true);
+					view.setUint32(buf + offset + 16, name.length, true);
+					view.setUint8(buf + offset + 20, entries[index].directory ? 3 : 4);
+					bytes.set(name, buf + offset + 24);
+					offset += length;
+				}
+
+				this.#set_uint32(bufused, offset);
 				return this.#WASI_ERRNO_SUCCESS;
 			},
 			fd_renumber: (from, to) => {
@@ -308,14 +362,33 @@ export default class WASI {
 				return errno;
 			},
 			path_filestat_get: (fd, flags, path, path_len, buf) => {
-				const size = this.#filesystem.size(this.#str_to_js(path, path_len));
-				if (size == -1)
-					return this.#WASI_ERRNO_NOENT;
+				const file_path = this.#path(this.#str_to_js(path, path_len));
+				const size = this.#filesystem.size(file_path);
+				if (size != -1) {
+					this.#set_filestat(buf, size);
+					return this.#WASI_ERRNO_SUCCESS;
+				}
 
-				return this.#WASI_ERRNO_SUCCESS;
+				if (this.#filesystem.entries(file_path)) {
+					this.#set_filestat(buf, 0, true);
+					return this.#WASI_ERRNO_SUCCESS;
+				}
+
+				return this.#WASI_ERRNO_NOENT;
 			},
 			path_open: (dirfd, dirflags, path, path_len, o_flags, fs_rights_base, fs_rights_inheriting, fs_flags, fd) => {
-				const file_path = this.#str_to_js(path, path_len);
+				const file_path = this.#path(this.#str_to_js(path, path_len));
+				const directory = o_flags & this.#O_DIRECTORY;
+
+				if (directory) {
+					const entries = this.#filesystem.entries(file_path);
+					if (!entries)
+						return this.#WASI_ERRNO_NOENT;
+
+					this.#set_uint32(fd, this.#next_fd);
+					this.#fds[this.#next_fd++] = { path: file_path, offset: 0, directory: true, entries };
+					return this.#WASI_ERRNO_SUCCESS;
+				}
 
 				if (!(o_flags & this.#O_CREAT)) {
 					const size = this.#filesystem.size(file_path);
