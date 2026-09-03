@@ -7,6 +7,7 @@ import Path from './path';
 import Parallel from './parallel';
 import Filesystem from './filesystem';
 import WASI from './wasi';
+import { hardwareImports } from './hardware-graphics';
 
 export default class Files {
 	/** @type {Object} */
@@ -77,6 +78,7 @@ export default class Files {
 				saveSetjmp: () => 0,
 				testSetjmp: () => 0,
 				getTempRet0: () => 0,
+				...hardwareImports(),
 			},
 			wasi_snapshot_preview1: wasi.environment,
 			wasi: { 'thread-spawn': () => -1 },
@@ -222,6 +224,7 @@ export default class Files {
 						blockExtract: metadata.blockExtract ?? discovered.blockExtract,
 						contentRequired,
 						directKeyboardMouse: !!metadata.directKeyboardMouse,
+						hardwareRendering: !!metadata.hardwareRendering,
 						builtinGames,
 						games: games.map(game => new Game(system, game.rom, false, false, game.metadata, game.size, game.source)),
 					});

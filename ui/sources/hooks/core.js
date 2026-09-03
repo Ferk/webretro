@@ -145,7 +145,7 @@ export const useCore = (lib) => {
 	 * @param {HTMLCanvasElement} canvas
 	 * @returns {Promise<void>}
 	 */
-	const init = async (system, rom, contentRequired, canvas) => {
+	const init = async (system, rom, contentRequired, canvas, hardwareRendering = false) => {
 		const game = rom.replace(/\.[^/.]+$/, '')
 
 		await load('Starting game...');
@@ -157,7 +157,7 @@ export const useCore = (lib) => {
 			setSettings(settings);
 			setCheats(cheats);
 
-			await core.create(system, rom, contentRequired, canvas, setVariables);
+			await core.create(system, rom, contentRequired, canvas, setVariables, hardwareRendering);
 			await core.start(settings, cheats);
 
 			initAudio(settings);

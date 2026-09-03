@@ -324,7 +324,7 @@ export const CoreModal = ({ system, game, close }) => {
 	useEffect(() => {
 		(async () => {
 			try {
-				await core.init(system.name, game.rom, system.contentRequired, canvas.current).then(() => resize());
+				await core.init(system.name, game.rom, system.contentRequired, canvas.current, system.hardwareRendering).then(() => resize());
 				paused.current = null;
 				syncPause();
 			} catch (e) {

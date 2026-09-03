@@ -61,7 +61,7 @@ export default class Core {
 	 * @param {(variables: Variable[]) => void} on_variables
 	 * @returns {Promise<void>}
 	 */
-	async create(system, rom, contentRequired, canvas, on_variables) {
+	async create(system, rom, contentRequired, canvas, on_variables, hardwareRendering = false) {
 		if (!crossOriginIsolated) {
 			throw new Error(
 				'Browser isolation is required to start games. Serve Gamejin with Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers, then reload the page.'
@@ -74,18 +74,30 @@ export default class Core {
 		this.#frames = 0;
 		this.#audio_batches = 0;
 
-		this.#graphics = new Graphics(canvas);
+		if (!hardwareRendering)
+			this.#graphics = new Graphics(canvas);
 		this.#on_variables = on_variables
 
 		const origin = location.origin + location.pathname.substring(0, location.pathname.lastIndexOf('/'));
-		const config = { core: this.#name, system, rom, contentRequired, origin, memory: this.#memory };
+		const config = { core: this.#name, system, rom, contentRequired, origin, memory: this.#memory, hardware: hardwareRendering };
+		if (hardwareRendering) {
+			if (!canvas.transferControlToOffscreen)
+				throw new Error('This browser cannot transfer a canvas to the hardware-rendering core.');
+			config.canvas = canvas.transferControlToOffscreen();
+		}
 		const script = await (await fetch('worker.js')).text();
 
 		const handler = async message => {
 			const thread = new Parallel(Interop, false, handler);
-			const core = await thread.create(this.#name, script);
-			await core.init(Parallel.instrument(this), await Files.clone(), { ...config, ...message.data });
-			this.#threads.push(thread);
+			try {
+				const core = await thread.create(this.#name, script);
+				const { canvas, ...threadConfig } = config;
+				await core.init(Parallel.instrument(this), await Files.clone(), { ...threadConfig, hardware: false, ...message.data });
+				this.#threads.push(thread);
+			} catch (error) {
+				thread.close();
+				console.error(`Could not start a ${this.#name} core thread.`, error);
+			}
 		}
 
 		this.#parallel = new Parallel(Interop, false, handler);
@@ -143,6 +155,8 @@ export default class Core {
 	 */
 	draw(video) {
 		this.#frames++;
+		if (!video.data)
+			return;
 
 		const video_view = video.format == 1
 			? new Uint8Array(this.#memory.buffer, video.data, video.pitch * video.height)

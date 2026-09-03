@@ -8,6 +8,7 @@ import Filesystem from './filesystem';
 import Core from './core';
 import WASI from './wasi';
 import Input from './input';
+import HardwareGraphics, { hardwareImports } from './hardware-graphics';
 
 class InteropConfig {
 	/** @type {string} */
@@ -53,6 +54,9 @@ export default class Interop {
 
 	/** @type {Input} */
 	#input = new Input();
+
+	#timer = null;
+	#hardware = false;
 
 	/**
 	 * @param {WebAssembly.Instance} instance
@@ -142,6 +146,13 @@ export default class Interop {
 		const filesystem = fs_parallel.link(fs_port);
 		this.#wasi = new WASI(config.memory, filesystem, config.fds);
 
+		// Gamejin runs retro_run in its first WASI pthread. That worker owns the
+		// OffscreenCanvas so GL calls and the current context always share a thread.
+		const hardware = config.hardware && config.canvas
+			? new HardwareGraphics(config.canvas, config.memory)
+			: null;
+		this.#hardware = !!hardware;
+
 		const web_video = (video_c) => {
 			this.#core.draw(Video.parse(config.memory, video_c));
 		};
@@ -205,18 +216,20 @@ export default class Interop {
 		};
 
 		const source = await WebAssembly.instantiateStreaming(fetch(`${config.origin}/modules/${config.core}.wasm`), {
-			env: { memory: config.memory, web_video, web_audio, web_variables, saveSetjmp, testSetjmp, getTempRet0: () => tempRet0 },
+			env: { memory: config.memory, web_video, web_audio, web_variables, saveSetjmp, testSetjmp, getTempRet0: () => tempRet0, ...hardwareImports(), ...(hardware ?? {}) },
 			wasi_snapshot_preview1: this.#wasi.environment,
 			wasi: { 'thread-spawn': (start_arg) => {
 				const id = filesystem.id();
-				postMessage({ id, fds: this.#wasi.fds, start_arg });
+				const canvas = config.hardware && !config.hardwareCanvasTransferred ? config.canvas : null;
+				config.hardwareCanvasTransferred ||= !!canvas;
+				postMessage({ id, fds: this.#wasi.fds, start_arg, hardware: !!canvas, canvas }, canvas ? [canvas] : []);
 				return id;
 			}},
 		});
 
 		this.#instance = source.instance;
 
-		if (config.start_arg) {
+		if (config.start_arg != null) {
 			this.#instance.exports.wasi_thread_start(config.id, config.start_arg);
 			close();
 			return [];
@@ -225,7 +238,9 @@ export default class Interop {
 		this.#instance.exports._initialize();
 
 		this.#wrap('Create',             null,      ['string', 'string', 'boolean']);
+		this.#wrap('ConfigureHardware',  null,      ['boolean']);
 		this.#wrap('StartGame',          'boolean', []);
+		this.#wrap('Run',                null,      []);
 		this.#wrap('GetError',           'string',  []);
 		this.#wrap('GetStatus',          'string',  []);
 		this.#wrap('Destroy',            null,      []);
@@ -242,6 +257,7 @@ export default class Interop {
 		this.#wrap('SaveState',          null,      []);
 		this.#wrap('RestoreState',       null,      []);
 
+		this.ConfigureHardware(!!config.hardware);
 		this.Create(config.system, config.rom, config.contentRequired);
 	}
 
@@ -298,13 +314,20 @@ export default class Interop {
 	start() {
 		if (!this.StartGame())
 			throw new Error(this.GetError() || 'The core could not load this game.');
+
+		if (this.#hardware)
+			this.#timer = setInterval(() => this.Run(), 1000 / 60);
 	}
 
 	/** @returns {Promise<string>} */
 	status() { return this.GetStatus?.() || 'native status is unavailable'; }
 
 	/** @returns {Promise<void>} */
-	stop() { this.Destroy?.(); }
+	stop() {
+		clearInterval(this.#timer);
+		this.#timer = null;
+		this.Destroy?.();
+	}
 
 	/** @param {boolean} enable @returns {Promise<void>} */
 	audio(enable) { this.SetAudio(enable); }

@@ -107,7 +107,9 @@ typedef struct {
 
 GamejinCoreInfo *GamejinProbeCore();
 void GamejinCreate(const char *system, const char *rom, bool content_required);
+void GamejinConfigureHardware(bool enabled);
 bool GamejinStartGame();
+void GamejinRun(void);
 const char *GamejinGetError();
 char *GamejinGetStatus();
 void GamejinDestroy();

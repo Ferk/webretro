@@ -1,6 +1,8 @@
 GamejinCreate
+GamejinConfigureHardware
 GamejinProbeCore
 GamejinStartGame
+GamejinRun
 GamejinGetError
 GamejinGetStatus
 GamejinDestroy

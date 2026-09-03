@@ -140,5 +140,19 @@
 		"builtinGames": ["2048"],
 		"extensions": [],
 		"systems": ["Standalone Core"]
+	},
+	"vircon32": {
+		"name": "Vircon32",
+		"repository": "vircon32-libretro",
+		"cmake": true,
+		"cmakeFlags": ["-DENABLE_OPENGLES2=1"],
+		"cFlags": "-I../../../deps/gamejin-gles2",
+		"cxxFlags": "-I../../../deps/gamejin-gles2",
+		"hardwareRendering": true,
+		"extensions": [".v32"],
+		"platformAliases": {
+			"Vircon32": ["Vircon 32", "V32"]
+		},
+		"systems": ["Vircon32"]
 	}
 }

@@ -38,3 +38,6 @@
 [submodule "cores/fake-08"]
 	path = cores/fake-08
 	url = https://github.com/jtothebell/fake-08.git
+[submodule "cores/vircon32-libretro"]
+	path = cores/vircon32-libretro
+	url = https://github.com/vircon32/vircon32-libretro.git

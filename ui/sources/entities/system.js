@@ -28,6 +28,9 @@ export class System {
 	/** @type {boolean} */
 	directKeyboardMouse;
 
+	/** @type {boolean} */
+	hardwareRendering;
+
 	/** @type {string[]} */
 	builtinGames;
 

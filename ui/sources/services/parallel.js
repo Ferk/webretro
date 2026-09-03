@@ -242,6 +242,21 @@ export default class Parallel {
 	}
 
 	/**
+	 * @param {any} value
+	 * @returns {Transferable[]}
+	 */
+	#transferables(value) {
+		const transferable = this.#transferable(value);
+		if (transferable)
+			return [transferable];
+
+		if (!value || typeof value != 'object')
+			return [];
+
+		return Object.values(value).flatMap(item => this.#transferables(item));
+	}
+
+	/**
 	 * @param {MessageEvent} event
 	 * @returns {void}
 	 */
@@ -277,7 +292,7 @@ export default class Parallel {
 	#call(name, args, sync) {
 		if (!args) args = [];
 
-		const transfer = args.map(arg => this.#transferable(arg)).filter(Boolean);
+		const transfer = [...new Set(args.flatMap(arg => this.#transferables(arg)))];
 
 		if (!sync) {
 			const id = this.#next_id++;

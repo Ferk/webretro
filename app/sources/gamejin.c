@@ -9,6 +9,7 @@
 #include <stdatomic.h>
 
 #include "interop.h"
+#include "hardware.h"
 #include "vfs.h"
 #include "rthreads/rthreads.h"
 
@@ -32,6 +33,8 @@ static struct CTX {
 	bool probing;
 	bool content_required;
 	bool support_no_game;
+	bool hardware;
+	struct retro_hw_render_callback hardware_render;
 
 	char *paths[GAMEJIN_PATH_MAX];
 	char *game_name;
@@ -249,6 +252,19 @@ static bool environment(unsigned cmd, void *data)
 			vfs->iface = GamejinVfsInterface();
 			return true;
 		}
+		case RETRO_ENVIRONMENT_SET_HW_RENDER: {
+			struct retro_hw_render_callback *render = data;
+
+			if (!CTX.hardware || !render ||
+				(render->context_type != RETRO_HW_CONTEXT_OPENGLES2 &&
+				 render->context_type != RETRO_HW_CONTEXT_OPENGLES3))
+				return false;
+
+			render->get_current_framebuffer = GamejinHardwareFramebuffer;
+			render->get_proc_address = GamejinHardwareGetProcAddress;
+			CTX.hardware_render = *render;
+			return true;
+		}
 		case RETRO_ENVIRONMENT_SET_MESSAGE: {
 			struct retro_message *message = data;
 
@@ -390,6 +406,17 @@ GamejinCoreInfo *GamejinProbeCore()
 
 static void video_refresh(const void *data, unsigned width, unsigned height, size_t pitch)
 {
+	if (data == RETRO_HW_FRAME_BUFFER_VALID) {
+		CTX.video.width = width;
+		CTX.video.height = height;
+		CTX.video.ratio = CTX.av.geometry.aspect_ratio <= 0
+			? (float) width / (float) height
+			: CTX.av.geometry.aspect_ratio;
+		GamejinHardwarePresent();
+		GamejinInteropVideo(&CTX.video);
+		return;
+	}
+
 	if (!data)
 		return;
 
@@ -699,6 +726,11 @@ static void restore_memories()
 
 static void core_thread(void *opaque)
 {
+	if (CTX.hardware && CTX.hardware_render.context_reset) {
+		GamejinHardwareReset();
+		CTX.hardware_render.context_reset();
+	}
+
 	while (!CTX.destroying) {
 		if (atomic_load(&CTX.paused)) {
 			/* Do not turn the paused interval into a burst of catch-up frames. */
@@ -750,6 +782,11 @@ void GamejinCreate(const char *system, const char *rom, bool content_required)
 	CTX.sym.retro_set_input_state(input_state);
 	CTX.sym.retro_set_audio_sample(audio_sample);
 	CTX.sym.retro_set_audio_sample_batch(audio_sample_batch);
+}
+
+void GamejinConfigureHardware(bool enabled)
+{
+	CTX.hardware = GamejinHardwareConfigure(enabled);
 }
 
 static void set_core_callbacks()
@@ -817,6 +854,16 @@ bool GamejinStartGame()
 
 	restore_memories();
 
+	/* Hardware contexts are local to the worker that owns the OffscreenCanvas.
+	 * Drive those cores from that worker's event loop instead of a WASI pthread. */
+	if (CTX.hardware) {
+		if (CTX.hardware_render.context_reset) {
+			GamejinHardwareReset();
+			CTX.hardware_render.context_reset();
+		}
+		return CTX.initialized;
+	}
+
 	CTX.mutex = slock_new();
 	CTX.cond = scond_new();
 	CTX.core_thread = sthread_create(core_thread, NULL);
@@ -828,6 +875,18 @@ bool GamejinStartGame()
 	}
 
 	return CTX.initialized;
+}
+
+void GamejinRun(void)
+{
+	if (!CTX.initialized || CTX.destroying || atomic_load(&CTX.paused))
+		return;
+
+	CTX.run_entered++;
+	if (CTX.frame_time.callback)
+		CTX.frame_time.callback(CTX.frame_time.reference);
+	CTX.sym.retro_run();
+	CTX.run_returned++;
 }
 
 const char *GamejinGetError()
@@ -860,6 +919,9 @@ void GamejinDestroy()
 	if (CTX.mutex)
 		slock_free(CTX.mutex);
 
+	if (CTX.hardware && CTX.hardware_render.context_destroy)
+		CTX.hardware_render.context_destroy();
+	GamejinHardwareDestroy();
 	CTX.sym.retro_deinit();
 
 	for (int8_t i = 0; i < INT8_MAX; i++) {
