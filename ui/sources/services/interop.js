@@ -57,6 +57,7 @@ export default class Interop {
 
 	#timer = null;
 	#hardware = false;
+	#nextFrame = 0;
 
 	/**
 	 * @param {WebAssembly.Instance} instance
@@ -316,7 +317,28 @@ export default class Interop {
 			throw new Error(this.GetError() || 'The core could not load this game.');
 
 		if (this.#hardware)
-			this.#timer = setInterval(() => this.Run(), 1000 / 60);
+			this.#scheduleHardwareFrame();
+	}
+
+	/** @returns {void} */
+	#scheduleHardwareFrame() {
+		const interval = 1000 / 60;
+		const now = performance.now();
+
+		if (!this.#nextFrame)
+			this.#nextFrame = now;
+
+		// Keep audio time moving during brief worker stalls, but never allow a
+		// long hidden-tab pause to turn into a large burst of frames.
+		let frames = 0;
+		while (now >= this.#nextFrame && frames++ < 2) {
+			this.Run();
+			this.#nextFrame += interval;
+		}
+		if (now - this.#nextFrame > interval * 2)
+			this.#nextFrame = now + interval;
+
+		this.#timer = setTimeout(() => this.#scheduleHardwareFrame(), Math.max(0, this.#nextFrame - performance.now()));
 	}
 
 	/** @returns {Promise<string>} */
@@ -324,8 +346,9 @@ export default class Interop {
 
 	/** @returns {Promise<void>} */
 	stop() {
-		clearInterval(this.#timer);
+		clearTimeout(this.#timer);
 		this.#timer = null;
+		this.#nextFrame = 0;
 		this.Destroy?.();
 	}
 

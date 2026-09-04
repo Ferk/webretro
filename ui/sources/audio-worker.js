@@ -2,6 +2,12 @@ class AudioProcessor extends AudioWorkletProcessor {
 	/** @type {Int16Array[]} */
 	#buffers = []
 
+	/** @type {Int16Array} */
+	#buffer = null;
+
+	/** @type {number} */
+	#index = 0;
+
 	/** @type {number} */
 	#channels = 0;
 
@@ -28,26 +34,20 @@ class AudioProcessor extends AudioWorkletProcessor {
 		const left  = outputs[0][0];
 		const right = outputs[0][1];
 
-		let index = 0;
-		let buffer = null;
+		left.fill(0);
+		right.fill(0);
 		for (let sample = 0; sample < 128; sample++) {
-			if (!buffer || index >= buffer.length) {
-				index = 0;
-				buffer = this.#buffers.shift();
-				if (!buffer)
+			if (!this.#buffer || this.#index >= this.#buffer.length) {
+				this.#buffer = this.#buffers.shift();
+				this.#index = 0;
+				if (!this.#buffer)
 					break;
-				this.#queued -= buffer.length / this.#channels;
 			}
 
-			left[sample]  = buffer[index + 0] / 32768;
-			right[sample] = buffer[index + Math.min(1, this.#channels - 1)] / 32768;
-			index += this.#channels;
-		}
-
-		if (buffer && buffer.length > index) {
-			const remaining = buffer.slice(index);
-			this.#queued += remaining.length / this.#channels;
-			this.#buffers.unshift(remaining);
+			left[sample]  = this.#buffer[this.#index + 0] / 32768;
+			right[sample] = this.#buffer[this.#index + Math.min(1, this.#channels - 1)] / 32768;
+			this.#index += this.#channels;
+			this.#queued--;
 		}
 
 		return true;
