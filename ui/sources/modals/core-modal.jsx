@@ -153,6 +153,9 @@ const hasTouchInput = () => navigator.maxTouchPoints > 0 || matchMedia('(pointer
  * @returns {JSX.Element}
  */
 export const CoreModal = ({ system, game, close }) => {
+	// Ionic may update modal props while it is dismissing. A running core must
+	// keep the system and game it was started with until its cleanup completes.
+	const [{ system: activeSystem, game: activeGame }] = useState(() => ({ system, game }));
 	const content = useRef(/** @type {HTMLIonContentElement} */ (null));
 	const canvas  = useRef(/** @type {HTMLCanvasElement}     */ (null));
 	const menu = useRef(/** @type {HTMLIonMenuElement}       */ (null));
@@ -162,7 +165,7 @@ export const CoreModal = ({ system, game, close }) => {
 	const releasingPointerLock = useRef(false);
 	const paused = useRef(false);
 
-	const [core, audio, speed, inputMode] = useCore(system.lib_name);
+	const [core, audio, speed, inputMode] = useCore(activeSystem.lib_name);
 	const activeInputMode = useRef(inputMode.value);
 	activeInputMode.current = inputMode.value;
 	const [autoOverlay, setAutoOverlay] = useState(hasTouchInput);
@@ -324,7 +327,7 @@ export const CoreModal = ({ system, game, close }) => {
 	useEffect(() => {
 		(async () => {
 			try {
-				await core.init(system.name, game.rom, system.contentRequired, canvas.current, system.hardwareRendering).then(() => resize());
+				await core.init(activeSystem.name, activeGame.rom, activeSystem.contentRequired, canvas.current, activeSystem.hardwareRendering).then(() => resize());
 				paused.current = null;
 				syncPause();
 			} catch (e) {
@@ -471,7 +474,7 @@ export const CoreModal = ({ system, game, close }) => {
 								<IonSelectOption value="auto">Auto</IonSelectOption>
 								<IonSelectOption value="overlay">Gamepad overlay</IonSelectOption>
 								<IonSelectOption value="keyboard">Gamepad Keyboard</IonSelectOption>
-								{system.directKeyboardMouse &&
+								{activeSystem.directKeyboardMouse &&
 									<IonSelectOption value="direct">Direct Keyboard/Mouse</IonSelectOption>}
 							</IonSelect>
 						</IonItem>
@@ -489,7 +492,7 @@ export const CoreModal = ({ system, game, close }) => {
 						<IonButtons slot="start">
 							<IonMenuButton></IonMenuButton>
 						</IonButtons>
-						<IonTitle>{system.name}</IonTitle>
+						<IonTitle>{activeSystem.name}</IonTitle>
 						<IonButtons slot="end">
 							<IonButton onClick={close}>Close</IonButton>
 						</IonButtons>

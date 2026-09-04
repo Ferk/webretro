@@ -290,7 +290,7 @@ export const HomePage = () => {
 		history.replaceState(history.state, '', url);
 	};
 
-	const closeGame = () => {
+	const closeGame = async () => {
 		if (Navigation.closing)
 			clearGameLink();
 		else if (modal.current)
@@ -300,7 +300,7 @@ export const HomePage = () => {
 
 		modal.current?.();
 		modal.current = null;
-		stop();
+		await stop();
 		setSystem(null);
 		setGame(null);
 	};
