@@ -1,4 +1,4 @@
-WASI_VERSION = wasi-sdk-24
+WASI_VERSION = wasi-sdk-34
 
 # Detect the OS and architecture, and set the WASI_BUILD variable accordingly
 UNAME_S := $(shell uname -s)
@@ -86,12 +86,13 @@ ZLIB_OBJ = \
 	zlib/compress.o \
 	zlib/uncompr.o
 
-libz.a: $(ZLIB_OBJ)
+libz.a: $(ZLIB_OBJ) GNUmakefile ../GNUmakefile.common
 	@echo Building libz.a...
-	@$(AR) rcs $@ $^
+	@rm -f $@
+	@$(AR) rcs $@ $(ZLIB_OBJ)
 	@$(RANLIB) $@
 
-libretro.a:
+libretro.a: GNUmakefile ../GNUmakefile.common
 	@echo Building libretro.a...
 	@$(MAKE) $(OBJ) $(QUIET)
 	@$(AR) rcs libretro.a $(OBJ)
@@ -99,13 +100,13 @@ libretro.a:
 clean:
 	@rm -f $(OBJ) $(ZLIB_OBJ) zlib/zconf.h libretro.a libz.a
 
-%.o: %.c
-	@$(CC) -c -o $@ -Ilibretro-common/include $^ $(QUIET)
+%.o: %.c GNUmakefile ../GNUmakefile.common
+	@$(CC) -c -o $@ -Ilibretro-common/include $< $(QUIET)
 
-libretro-common/rthreads/rthreads.o: libretro-common/rthreads/rthreads.c
+libretro-common/rthreads/rthreads.o: libretro-common/rthreads/rthreads.c GNUmakefile ../GNUmakefile.common
 	@$(CC) -D__EMSCRIPTEN__ -D__ANDROID__ -c -o $@ -Ilibretro-common/include $< $(QUIET)
 
-zlib/%.o: zlib/%.c zlib/zconf.h
+zlib/%.o: zlib/%.c zlib/zconf.h GNUmakefile ../GNUmakefile.common
 	@$(CC) -DHAVE_UNISTD_H=1 -c -o $@ $< $(QUIET)
 
 zlib/zconf.h: zlib/zconf.h.in

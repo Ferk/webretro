@@ -90,20 +90,20 @@ ssize_t sendto(int sockfd, const void *buf, size_t len, int flags, const struct 
 ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen) { return -1; }
 
 
-// thread.h
-
-#include <pthread.h>
-
-int pthread_attr_setschedpolicy(pthread_attr_t *attr, int policy) { return -1; }
-int pthread_attr_setschedparam(pthread_attr_t *attr, const struct sched_param *param) { return -1; }
-
-
 // setjmp.h
 
 #include <setjmp.h>
 
 int setjmp(jmp_buf env) { return 0; }
 void longjmp(jmp_buf env, int val) { abort(); }
+
+
+// thread.h
+
+#include <pthread.h>
+
+int pthread_attr_setschedpolicy(pthread_attr_t *attr, int policy) { return -1; }
+int pthread_attr_setschedparam(pthread_attr_t *attr, const struct sched_param *param) { return -1; }
 
 
 // time.h
@@ -118,10 +118,3 @@ clock_t clock(void) { return 0; }
 #include <sys/mman.h>
 
 int madvise(void *addr, size_t length, int advice) { return 0; }
-
-
-// C++ exception stubs for cores that reference throw helpers but do not use
-// them on supported paths. DOSBox Pure is built to avoid these symbols.
-
-void *__cxa_allocate_exception(size_t thrown_size) { abort(); }
-void __cxa_throw(void *thrown_object, void *tinfo, void (*dest)(void *)) { abort(); }

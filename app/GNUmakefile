@@ -13,7 +13,7 @@ DEFINES := \
 	-I$(DEPS_DIR)/libretro-common/include
 
 LDFLAGS := \
-	-lwasi-emulated-mman -fwasm-exceptions \
+	-lwasi-emulated-mman -fwasm-exceptions -lunwind \
 	-lsetjmp \
 	-mexec-model=reactor -Wl,--no-entry \
 	-Wl,--export=calloc,--export=free,--export=realloc \
@@ -29,6 +29,8 @@ OBJ := \
 
 include ../GNUmakefile.common
 
+LINK_CXX := $(filter-out -mllvm -wasm-use-legacy-eh=false,$(CXX))
+
 all: clean prepare
 	@echo Building objects...
 	@$(MAKE) -s $(OBJ)
@@ -37,7 +39,7 @@ all: clean prepare
 prepare:
 	@mkdir -p $(OUT_DIR)
 
-$(OUT_DIR)/%.wasm: $(OBJ) $(DEPS) $(CORES_DIR)/lib%.a exports.txt
+$(OUT_DIR)/%.wasm: $(OBJ) $(DEPS) $(CORES_DIR)/lib%.a exports.txt GNUmakefile ../GNUmakefile.common $(DEPS_DIR)/GNUmakefile $(CORES_DIR)/cores.json
 	@echo Building $*.wasm...
 	@extras=`jq -r '."$*".linkArchives[]? // empty' $(CORES_DIR)/cores.json | sed 's#^#$(CORES_DIR)/#'` && \
 	link_flags=`jq -r '."$*".linkFlags[]? // empty' $(CORES_DIR)/cores.json` && \
@@ -45,11 +47,11 @@ $(OUT_DIR)/%.wasm: $(OBJ) $(DEPS) $(CORES_DIR)/lib%.a exports.txt
 	if test "`jq -r '."$*".wholeArchive // false' $(CORES_DIR)/cores.json`" = true; then \
 		core_archive="-Wl,--whole-archive $$core_archive -Wl,--no-whole-archive"; \
 	fi && \
-	$(CXX) -o $(OUT_DIR)/$*.wasm $(OBJ) $(DEPS) $$core_archive $$extras \
+	$(LINK_CXX) -o $(OUT_DIR)/$*.wasm $(OBJ) $(DEPS) $$core_archive $$extras \
 		$(LDFLAGS) $$link_flags $(EXPORTS) $(QUIET)
 
 clean:
 	@rm -rf $(OBJ) $(OUT_DIR)
 
-%.o: %.c
-	@$(CC) -c -o $@ $^ $(QUIET)
+%.o: %.c GNUmakefile ../GNUmakefile.common $(DEPS_DIR)/GNUmakefile
+	@$(CC) -c -o $@ $< $(QUIET)

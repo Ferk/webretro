@@ -11,7 +11,7 @@ QUIET := > /dev/null 2>&1
 
 DEFINES += \
 	--sysroot=$(WASI_SDK)/share/wasi-sysroot \
-	--target=wasm32-wasi-threads -pthread -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_SIGNAL -mllvm -wasm-enable-sjlj \
+	--target=wasm32-wasip1-threads -pthread -D_WASI_EMULATED_MMAN -D_WASI_EMULATED_SIGNAL -fwasm-exceptions -mllvm -wasm-use-legacy-eh=false \
 	-I$(shell pwd)/../deps/zlib
 
 LDFLAGS += -lwasi-emulated-signal

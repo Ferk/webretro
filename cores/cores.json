@@ -23,6 +23,7 @@
 		"name": "DeSmuME",
 		"repository": "desmume",
 		"directory": "desmume/src/frontend/libretro",
+		"compilerFlags": ["-include stdlib.h"],
 		"preinclude": "../../../../../desmume-wasi-compat.h",
 		"preincludeFiles": ["*/wifi.cpp", "wifi.cpp", "*/rthreads.c", "rthreads.c"],
 		"extensions": [".nds"],
@@ -37,6 +38,7 @@
 		"directKeyboardMouse": true,
 		"outputVariable": "OUTNAME",
 		"buildFlags": ["NO_EXCEPTIONS=1"],
+		"compilerFlags": ["-include new"],
 		"patches": ["cores/patches/dosbox-pure/wasi-no-cxx-exceptions.patch"],
 		"extensions": [".zip", ".dosz", ".exe", ".com", ".bat", ".iso", ".chd", ".cue", ".ins", ".img", ".ima", ".vhd", ".jrc", ".m3u", ".m3u8", ".conf"],
 		"platformAliases": {
@@ -91,7 +93,7 @@
 		"name": "Fake-08",
 		"repository": "fake-08",
 		"directory": "platform/libretro",
-		"compilerFlags": ["-fno-exceptions"],
+		"compilerFlags": ["-include stdlib.h"],
 		"patches": ["cores/patches/fake-08/input-repeat.patch"],
 		"preinclude": "../../../wasi-compat.h",
 		"preincludeFiles": ["*/z8lua/ldo.c", "*/z8lua/loslib.c", "ldo.c", "loslib.c"],
@@ -110,7 +112,7 @@
 		"cmakeFlags": ["-DBUILD_STATIC=ON", "-DBUILD_WITH_LUA=ON", "-DBUILD_WITH_FENNEL=ON", "-DBUILD_WITH_PYTHON=ON"],
 		"defineEmscripten": false,
 		"cFlags": "-DMA_3DS -DL_tmpnam=32 -D_WASI_EMULATED_PROCESS_CLOCKS",
-		"linkFlags": ["-lwasi-emulated-process-clocks", "-Wl,-mllvm,-wasm-enable-sjlj"],
+		"linkFlags": ["-lwasi-emulated-process-clocks"],
 		"patches": [
 			"cores/patches/TIC-80/0001-Fix-WASM-libretro-core-build-failing-at-runtime.patch",
 			"cores/patches/TIC-80/0002-Protect-Fennel-Lua-calls-on-WASM.patch"

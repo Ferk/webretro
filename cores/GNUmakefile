@@ -28,7 +28,7 @@ fetch-%:
 		exit 1; \
 	fi
 
-lib%.a: fetch-%
+lib%.a: GNUmakefile ../GNUmakefile.common ../deps/GNUmakefile cores.json | fetch-%
 	@target=`pwd`/lib$*.a && \
 	name=`jq -r '."$*".repository // "$*"' cores.json` && \
 	source="$$name" && \
@@ -139,7 +139,7 @@ lib%.a: fetch-%
 		find $$builddir -name "$*_libretro*.a" -print -quit | xargs -r cp -f -t `pwd` && \
 		cp -f `pwd`/$*_libretro*.a $$target; \
 	else \
-		$(MAKE) -C $$source/$$makedir -f $$makefile $$target_arg \
+		$(MAKE) -B -C $$source/$$makedir -f $$makefile $$target_arg \
 			$(BUILD_JOBS) HAVE_OPENGL=0 STATIC_LINKING=1 AR="$$ar" RANLIB="$$ranlib" \
 			platform=$$platform CC="$$cc" CXX="$$cxx" \
 			$$flag_args $$extra_flags $(QUIET); \
