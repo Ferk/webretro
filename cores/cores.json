@@ -51,6 +51,7 @@
 		"name": "Mesen",
 		"repository": "Mesen",
 		"directory": "Libretro",
+		"buildFlags": ["LTO="],
 		"extensions": [".nes", ".fds"],
 		"platformAliases": {
 			"NES": ["Nintendo Entertainment System", "Famicom", "FDS", "Family Computer Disk System"]
