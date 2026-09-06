@@ -1,3 +1,27 @@
+From: Gamejin <noreply@gamejin.local>
+Subject: [PATCH] fake-08: preserve input edges between Lua updates
+
+Fake-08's libretro host receives input every libretro frame, but a 30 FPS
+PICO-8 cartridge runs its Lua input update only every other frame. Replacing
+the current KDown state on each incoming frame lets a quick press-and-release
+be overwritten before Host::scanInput() observes it.
+
+Accumulate KDown bits in the libretro host and clear them only after
+Host::scanInput() returns them to the VM. Held state remains a level value and
+continues to be replaced every frame.
+
+The cart runner already calls _update_buttons() before _update() or
+_update60(). flip() calls _update_buttons() again before yielding, which
+creates a second input sample in the same emulation cycle. Yield directly
+after _draw() to preserve scheduling without the duplicate sample.
+
+Fake-08 also implements PICO-8's btnp() hold-repeat behavior. Its repeat
+interval was mistakenly read from btnpRepeatDelay, causing a custom interval
+to be ignored. Read btnpRepeatInterval for the repeat cadence while continuing
+to use btnpRepeatDelay for the initial delay.
+
+---
+
 diff --git a/source/Input.cpp b/source/Input.cpp
 index c7e9c1e..dfefb2d 100644
 --- a/source/Input.cpp
@@ -13,8 +37,27 @@ index c7e9c1e..dfefb2d 100644
  
      for (int i = 0; i < 7; i ++) {
          bool down = BITMASK(i) & kheld;
+
+diff --git a/platform/libretro/libretrohost.cpp b/platform/libretro/libretrohost.cpp
+--- a/platform/libretro/libretrohost.cpp
++++ b/platform/libretro/libretrohost.cpp
+@@ -29,5 +29,7 @@ std::string _currentCartDirectory;
+ void setInputState(uint8_t kDown, uint8_t kHeld, int16_t mouseX, int16_t mouseY, uint8_t mouseBtns) {
+-    stubCurrKDown = kDown;
++    // A 30 FPS cart only samples input every other libretro frame.
++    // Retain press edges until Host::scanInput() consumes them.
++    stubCurrKDown |= kDown;
+     stubCurrKHeld = kHeld;
+     stubMouseX = mouseX;
+     stubMouseY = mouseY;
+@@ -68,3 +70,5 @@ InputState_t Host::scanInput(){
+ InputState_t Host::scanInput(){
+-    return InputState_t {stubCurrKDown, stubCurrKHeld, stubMouseX, stubMouseY, stubMouseBtns, stubCurrKBdown, stubCurrKBkey};
++    InputState_t input {stubCurrKDown, stubCurrKHeld, stubMouseX, stubMouseY, stubMouseBtns, stubCurrKBdown, stubCurrKBkey};
++    stubCurrKDown = 0;
++    return input;
+ }
 diff --git a/source/p8GlobalLuaFunctions.h b/source/p8GlobalLuaFunctions.h
-index 53c2fe7..535e746 100644
 --- a/source/p8GlobalLuaFunctions.h
 +++ b/source/p8GlobalLuaFunctions.h
 @@ -546,9 +546,9 @@ function __z8_run_cart(cart_code)
