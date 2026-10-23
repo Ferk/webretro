@@ -1,0 +1,332 @@
+From 5a9a26704dc9ba2f88c5897f2f32ed0abedcb007 Mon Sep 17 00:00:00 2001
+From: Fernando Carmona Varo <ferkiwi@gmail.com>
+Date: Tue, 27 Oct 2026 22:08:18 +0100
+Subject: [PATCH] Pass frontend language to cartridges at startup
+
+Use the libretro frontend language setting to build an optional transient
+startup-locale record in RAM before the cartridge executes. Keep the
+injection mechanism generic so cartridges may opt into the convention.
+
+Translate every language defined by libretro to an ISO-style tag. The
+two 32-bit tag fields carry up to four ASCII characters each, allowing
+Asturian and the Valencian variant to be represented alongside locale
+suffixes such as en-GB, pt-BR, zh-TW and zh-CN.
+
+Vircon32 currently ships an older libretro header, so the patch also
+defines the stable numeric values for the five newer language constants.
+
+---
+
+diff --git a/ConsoleLogic/V32Console.cpp b/ConsoleLogic/V32Console.cpp
+index 8e5dc5a..e22699a 100755
+--- a/ConsoleLogic/V32Console.cpp
++++ b/ConsoleLogic/V32Console.cpp
+@@ -58,6 +58,8 @@ namespace V32
+         
+         // set initial state
+         PowerIsOn = false;
++        CartridgeStartupRAMPending = false;
++        CartridgeStartupRAMFirstWord = 0;
+         
+         // initial loads are 0
+         LastCPULoads[ 0 ] = LastCPULoads[ 1 ] = 0;
+@@ -120,12 +122,32 @@ namespace V32
+         
+         // now reset the console itself
+         RAM.ClearContents();
++        CartridgeStartupRAMPending = HasCartridge() && !CartridgeStartupRAMWords.empty();
+         
+         // loads become 0 on a reset
+         LastCPULoads[ 0 ] = LastCPULoads[ 1 ] = 0;
+         LastGPULoads[ 0 ] = LastGPULoads[ 1 ] = 0;
+     }
+     
++    // -----------------------------------------------------------------------------
++
++    // Configure optional words supplied by the host immediately before cartridge
++    // execution. An empty payload disables the facility.
++    void V32Console::SetCartridgeStartupRAM
++    (
++        uint32_t FirstWord, const V32Word* Words, uint32_t WordCount
++    )
++    {
++        CartridgeStartupRAMFirstWord = FirstWord;
++        CartridgeStartupRAMWords.clear();
++
++        if( Words && WordCount )
++          CartridgeStartupRAMWords.assign( Words, Words + WordCount );
++
++        CartridgeStartupRAMPending =
++            HasCartridge() && !CartridgeStartupRAMWords.empty();
++    }
++
+     // -----------------------------------------------------------------------------
+     
+     // if a device can't run at 60 fps, some frames may be
+@@ -162,6 +184,38 @@ namespace V32
+                 // end loop early when CPU is set to wait
+                 if( CPU.Waiting || CPU.Halted )
+                   break;
++
++                // Let a host provide transient startup information after the BIOS
++                // has finished, but before the cartridge executes any instruction.
++                if( CartridgeStartupRAMPending )
++                {
++                    uint32_t InstructionAddress = CPU.InstructionPointer.AsBinary;
++                    uint32_t CartridgeFirst = Constants::CartridgeProgramROMFirstAddress;
++                    uint32_t CartridgeEnd =
++                        CartridgeFirst + CartridgeController.MemorySize;
++
++                    if( InstructionAddress >= CartridgeFirst &&
++                        InstructionAddress < CartridgeEnd )
++                    {
++                        uint32_t AvailableWords = 0;
++
++                        if( CartridgeStartupRAMFirstWord < (uint32_t)RAM.MemorySize )
++                          AvailableWords =
++                              RAM.MemorySize - CartridgeStartupRAMFirstWord;
++
++                        uint32_t CopiedWords = min
++                        (
++                            (uint32_t)CartridgeStartupRAMWords.size(),
++                            AvailableWords
++                        );
++
++                        for( uint32_t Word = 0; Word < CopiedWords; Word++ )
++                          RAM.Memory[ CartridgeStartupRAMFirstWord + Word ] =
++                              CartridgeStartupRAMWords[ Word ];
++
++                        CartridgeStartupRAMPending = false;
++                    }
++                }
+                 
+                 // only these components need to
+                 // be notified of each CPU cycle
+diff --git a/ConsoleLogic/V32Console.hpp b/ConsoleLogic/V32Console.hpp
+index b853340..c96617c 100755
+--- a/ConsoleLogic/V32Console.hpp
++++ b/ConsoleLogic/V32Console.hpp
+@@ -52,6 +52,11 @@ namespace V32
+             
+             // internal state
+             bool PowerIsOn;
++            bool CartridgeStartupRAMPending;
++
++            // optional host data written just before cartridge execution
++            uint32_t CartridgeStartupRAMFirstWord;
++            std::vector< V32Word > CartridgeStartupRAMWords;
+             
+             // additional data about the connected bios
+             std::string BiosFileName;
+@@ -77,6 +82,12 @@ namespace V32
+             void SetPower( bool On );
+             void Reset();
+             void RunNextFrame( bool FrameSkipped );
++
++            // transient host data made available to a cartridge at startup
++            void SetCartridgeStartupRAM
++            (
++                uint32_t FirstWord, const V32Word* Words, uint32_t WordCount
++            );
+             
+             // general status queries
+             bool IsPowerOn();
+diff --git a/README.md b/README.md
+index 172708f..877301d 100755
+--- a/README.md
++++ b/README.md
+@@ -17,6 +17,9 @@ Here are some examples of Vircon32 games (size here is 50%):
+ - There is a core option to enable automatic frameskip. Use this to reduce slowdown if needed. However it can cause some stutter or small inaccuracies so it is recommended to leave it off (this is the default).
+ - The core supports savestates and rewinding.
+ - The core is ready for RetroAchievements support.
++- The core passes the libretro frontend language to compatible cartridges as
++  transient startup data. A game's own saved language preference still takes
++  precedence when the game implements one.
+ - It is not clear if netplay is possible. This is untested.
+ 
+ -----------------
+diff --git a/Savestates.cpp b/Savestates.cpp
+index 5a81359..3f2edca 100755
+--- a/Savestates.cpp
++++ b/Savestates.cpp
+@@ -87,6 +87,7 @@ void SaveOtherConsoleState( OtherConsoleState& State )
+     // save state for minor chips
+     memcpy( State.TimerRegisters, &Console.Timer.CurrentDate, sizeof(State.TimerRegisters) );
+     State.RNGCurrentValue = Console.RNG.CurrentValue;
++    State.CartridgeStartupRAMPending = Console.CartridgeStartupRAMPending;
+     
+     // save the full RAM
+     memcpy( State.RAM, &Console.RAM.Memory[ 0 ], sizeof(State.RAM) );
+@@ -255,6 +256,7 @@ void LoadOtherConsoleState( const OtherConsoleState& State )
+     // load state for minor chips
+     memcpy( &Console.Timer.CurrentDate, State.TimerRegisters, sizeof(State.TimerRegisters) );
+     Console.RNG.CurrentValue = State.RNGCurrentValue;
++    Console.CartridgeStartupRAMPending = State.CartridgeStartupRAMPending;
+     
+     // load the full RAM
+     memcpy( &Console.RAM.Memory[ 0 ], State.RAM, sizeof(State.RAM) );
+diff --git a/Savestates.hpp b/Savestates.hpp
+index f632170..e57cb8d 100755
+--- a/Savestates.hpp
++++ b/Savestates.hpp
+@@ -101,6 +101,7 @@ typedef struct
+     // state for minor chips
+     V32::V32Word TimerRegisters[ 4 ];
+     int32_t RNGCurrentValue;
++    int32_t CartridgeStartupRAMPending;
+     
+     // NOTE 1: Power is assumed to be on when saving a
+     // state. On a core this should always be the case.
+diff --git a/libretro.cpp b/libretro.cpp
+index aba2bc2..7566cd4 100755
+--- a/libretro.cpp
++++ b/libretro.cpp
+@@ -202,6 +202,124 @@ static void update_config_variables()
+ }
+ 
+ 
++// =============================================================================
++//      PASSING THE FRONTEND LOCALE TO CARTRIDGES
++// =============================================================================
++
++
++// This optional record is a producer convention rather than Vircon32 hardware.
++// Cartridges that do not recognize it simply treat these words as ordinary RAM.
++static const uint32_t BootLocaleMagic = 0x4C323356u;  // "V32L"
++static const uint32_t BootLocaleVersion = 1;
++static const uint32_t BootLocaleRAMWord = 0;
++static const uint32_t BootLocaleWordCount = 5;
++static V32::V32Word BootLocaleWords[ BootLocaleWordCount ];
++static bool BootLocaleAvailable = false;
++
++// Vircon32 currently ships the libretro header through Hungarian (31).
++// Gamejin implements the five language values subsequently assigned by
++// libretro, so retain their stable numeric API values locally.
++static const unsigned RetroLanguageBelarusian = 32;
++static const unsigned RetroLanguageGalician = 33;
++static const unsigned RetroLanguageNorwegian = 34;
++static const unsigned RetroLanguageIrish = 35;
++static const unsigned RetroLanguageThai = 36;
++
++// Pack up to four ASCII characters in Vircon32's little-endian word format.
++static uint32_t PackLocaleCode( const char* Code )
++{
++    uint32_t Packed = 0;
++
++    for( int Index = 0; Code[ Index ] && Code[ Index ] != '-' && Index < 4; Index++ )
++      Packed |= (uint32_t)(uint8_t)Code[ Index ] << (8 * Index);
++
++    return Packed;
++}
++
++// Translate every libretro language to an ISO-style locale tag. The optional
++// suffix is stored separately as a territory or variant word.
++static bool GetFrontendLocaleTags
++(
++    unsigned FrontendLanguage, uint32_t& Language, uint32_t& Territory
++)
++{
++    const char* Tag = nullptr;
++    Territory = 0;
++
++    switch( FrontendLanguage )
++    {
++        case RETRO_LANGUAGE_ENGLISH:             Tag = "en"; break;
++        case RETRO_LANGUAGE_JAPANESE:            Tag = "ja"; break;
++        case RETRO_LANGUAGE_FRENCH:              Tag = "fr"; break;
++        case RETRO_LANGUAGE_SPANISH:             Tag = "es"; break;
++        case RETRO_LANGUAGE_GERMAN:              Tag = "de"; break;
++        case RETRO_LANGUAGE_ITALIAN:             Tag = "it"; break;
++        case RETRO_LANGUAGE_DUTCH:               Tag = "nl"; break;
++        case RETRO_LANGUAGE_PORTUGUESE_BRAZIL:   Tag = "pt-BR"; break;
++        case RETRO_LANGUAGE_PORTUGUESE_PORTUGAL: Tag = "pt-PT"; break;
++        case RETRO_LANGUAGE_RUSSIAN:             Tag = "ru"; break;
++        case RETRO_LANGUAGE_KOREAN:              Tag = "ko"; break;
++        case RETRO_LANGUAGE_CHINESE_TRADITIONAL: Tag = "zh-TW"; break;
++        case RETRO_LANGUAGE_CHINESE_SIMPLIFIED:  Tag = "zh-CN"; break;
++        case RETRO_LANGUAGE_ESPERANTO:           Tag = "eo"; break;
++        case RETRO_LANGUAGE_POLISH:              Tag = "pl"; break;
++        case RETRO_LANGUAGE_VIETNAMESE:          Tag = "vi"; break;
++        case RETRO_LANGUAGE_ARABIC:              Tag = "ar"; break;
++        case RETRO_LANGUAGE_GREEK:               Tag = "el"; break;
++        case RETRO_LANGUAGE_TURKISH:             Tag = "tr"; break;
++        case RETRO_LANGUAGE_SLOVAK:              Tag = "sk"; break;
++        case RETRO_LANGUAGE_PERSIAN:             Tag = "fa"; break;
++        case RETRO_LANGUAGE_HEBREW:              Tag = "he"; break;
++        case RETRO_LANGUAGE_ASTURIAN:            Tag = "ast"; break;
++        case RETRO_LANGUAGE_FINNISH:             Tag = "fi"; break;
++        case RETRO_LANGUAGE_INDONESIAN:          Tag = "id"; break;
++        case RETRO_LANGUAGE_SWEDISH:             Tag = "sv"; break;
++        case RETRO_LANGUAGE_UKRAINIAN:           Tag = "uk"; break;
++        case RETRO_LANGUAGE_CZECH:               Tag = "cs"; break;
++        case RETRO_LANGUAGE_CATALAN_VALENCIA:    Tag = "ca-val"; break;
++        case RETRO_LANGUAGE_CATALAN:             Tag = "ca"; break;
++        case RETRO_LANGUAGE_BRITISH_ENGLISH:     Tag = "en-GB"; break;
++        case RETRO_LANGUAGE_HUNGARIAN:           Tag = "hu"; break;
++        case RetroLanguageBelarusian:            Tag = "be"; break;
++        case RetroLanguageGalician:              Tag = "gl"; break;
++        case RetroLanguageNorwegian:             Tag = "no"; break;
++        case RetroLanguageIrish:                 Tag = "ga"; break;
++        case RetroLanguageThai:                  Tag = "th"; break;
++        default:
++          return false;
++    }
++
++    Language = PackLocaleCode( Tag );
++
++    const char* Suffix = strchr( Tag, '-' );
++    if( Suffix )
++      Territory = PackLocaleCode( Suffix + 1 );
++
++    return true;
++}
++
++// Build the transient boot record from the frontend's current language.
++static void UpdateFrontendLocale()
++{
++    unsigned FrontendLanguage = RETRO_LANGUAGE_ENGLISH;
++    uint32_t Language;
++    uint32_t Territory;
++    BootLocaleAvailable = false;
++
++    if( !environ_cb( RETRO_ENVIRONMENT_GET_LANGUAGE, &FrontendLanguage ) ||
++        !GetFrontendLocaleTags( FrontendLanguage, Language, Territory ) )
++      return;
++
++    BootLocaleWords[ 0 ].AsBinary = BootLocaleMagic;
++    BootLocaleWords[ 1 ].AsBinary = BootLocaleVersion;
++    BootLocaleWords[ 2 ].AsBinary = Language;
++    BootLocaleWords[ 3 ].AsBinary = Territory;
++    BootLocaleWords[ 4 ].AsBinary =
++        BootLocaleMagic ^ BootLocaleVersion ^ Language ^ Territory;
++    BootLocaleAvailable = true;
++}
++
++
+ // =============================================================================
+ //      SETTING UP THE CORE ENVIRONMENT
+ // =============================================================================
+@@ -541,6 +659,15 @@ void context_reset()
+         if( !LoadedCartridgePath.empty() )
+         {
+             Console.LoadCartridge( LoadedCartridgePath );
++
++            // The console applies this after the BIOS and immediately before
++            // the cartridge's first instruction, so the BIOS cannot erase it.
++            Console.SetCartridgeStartupRAM
++            (
++                BootLocaleRAMWord,
++                BootLocaleAvailable? BootLocaleWords : nullptr,
++                BootLocaleAvailable? BootLocaleWordCount : 0
++            );
+             
+             // also load the corresponding memory card if existing
+             if( FileExists( LoadedMemoryCardPath ) )
+@@ -699,6 +826,7 @@ bool retro_load_game( const struct retro_game_info *info )
+     
+     // before loading ensure that config variables are updated
+     update_config_variables();
++    UpdateFrontendLocale();
+     
+     // define the quircks of our serialization
+     uint64_t SerializationQuirks =

@@ -115,7 +115,6 @@
 		"cFlags": "-DMA_3DS -DL_tmpnam=32 -D_WASI_EMULATED_PROCESS_CLOCKS",
 		"linkFlags": ["-lwasi-emulated-process-clocks"],
 		"patches": [
-			"cores/patches/TIC-80/0001-Fix-WASM-libretro-core-build-failing-at-runtime.patch",
 			"cores/patches/TIC-80/0002-Protect-Fennel-Lua-calls-on-WASM.patch"
 		],
 		"extensions": [".tic"],
@@ -151,8 +150,10 @@
 		"cmakeFlags": ["-DENABLE_OPENGLES2=1"],
 		"cFlags": "-I../../../deps/gamejin-gles2",
 		"cxxFlags": "-I../../../deps/gamejin-gles2",
+		"patches": ["cores/patches/vircon32-libretro/0001-Pass-frontend-language-to-cartridges-at-startup.patch"],
 		"hardwareRendering": true,
 		"extensions": [".v32"],
+		"builtinGames": [],
 		"platformAliases": {
 			"Vircon32": ["Vircon 32", "V32"]
 		},
