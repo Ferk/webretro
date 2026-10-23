@@ -8,6 +8,7 @@
 void IMPORT(web_video)(const GamejinVideo *video);
 void IMPORT(web_audio)(const GamejinAudio *audio);
 void IMPORT(web_variables)(const GamejinVariable *variables);
+unsigned IMPORT(web_language)(void);
 
 void GamejinInteropInit(GamejinSymbols *sym)
 {
@@ -52,6 +53,11 @@ void GamejinInteropAudio(const GamejinAudio *audio)
 void GamejinInteropVariables(const GamejinVariable *variables)
 {
 	web_variables(variables);
+}
+
+unsigned GamejinInteropLanguage(void)
+{
+	return web_language();
 }
 
 int siprintf(char *str, const char *format, ...)

@@ -10,6 +10,35 @@ import WASI from './wasi';
 import Input from './input';
 import HardwareGraphics, { hardwareImports } from './hardware-graphics';
 
+const libretroLanguage = () => {
+	const languages = navigator.languages?.length ? navigator.languages : [navigator.language];
+	const primary = {
+		ar: 16, be: 32, ca: 29, cs: 27, de: 4, el: 17, en: 0, eo: 13,
+		es: 3, fa: 20, fi: 23, fr: 2, ga: 35, gl: 33, he: 21, hu: 31,
+		id: 24, it: 5, ja: 1, ko: 10, nl: 6, no: 34, pl: 14, ru: 9,
+		sk: 19, sv: 25, th: 36, tr: 18, uk: 26, vi: 15,
+	};
+
+	for (const requested of languages) {
+		const language = requested?.toLowerCase().replaceAll('_', '-');
+		if (!language)
+			continue;
+
+		if (language == 'en-gb') return 30;
+		if (language == 'pt-br') return 7;
+		if (language == 'pt-pt' || language == 'pt') return 8;
+		if (language == 'zh-hant' || language.startsWith('zh-tw') || language.startsWith('zh-hk') || language.startsWith('zh-mo')) return 11;
+		if (language == 'zh-hans' || language == 'zh' || language.startsWith('zh-cn') || language.startsWith('zh-sg')) return 12;
+		if (language == 'ca-valencia' || language == 'ca-es-valencia') return 28;
+
+		const value = primary[language.split('-', 1)[0]];
+		if (value != null)
+			return value;
+	}
+
+	return 0;
+};
+
 class InteropConfig {
 	/** @type {string} */
 	core = null;
@@ -166,6 +195,8 @@ export default class Interop {
 			this.#core.variables(Variable.parse(this.#instance, variables_c));
 		}
 
+		const web_language = () => libretroLanguage();
+
 		let tempRet0 = 0;
 		let setjmpId = 0;
 
@@ -217,7 +248,7 @@ export default class Interop {
 		};
 
 		const source = await WebAssembly.instantiateStreaming(fetch(`${config.origin}/modules/${config.core}.wasm`), {
-			env: { memory: config.memory, web_video, web_audio, web_variables, saveSetjmp, testSetjmp, getTempRet0: () => tempRet0, ...hardwareImports(), ...(hardware ?? {}) },
+			env: { memory: config.memory, web_video, web_audio, web_variables, web_language, saveSetjmp, testSetjmp, getTempRet0: () => tempRet0, ...hardwareImports(), ...(hardware ?? {}) },
 			wasi_snapshot_preview1: this.#wasi.environment,
 			wasi: { 'thread-spawn': (start_arg) => {
 				const id = filesystem.id();

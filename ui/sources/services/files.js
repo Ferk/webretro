@@ -75,6 +75,7 @@ export default class Files {
 				web_video: () => {},
 				web_audio: () => {},
 				web_variables: () => {},
+				web_language: () => 0,
 				saveSetjmp: () => 0,
 				testSetjmp: () => 0,
 				getTempRet0: () => 0,

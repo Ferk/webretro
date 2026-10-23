@@ -197,6 +197,15 @@ static bool environment(unsigned cmd, void *data)
 
 			return true;
 		}
+		case RETRO_ENVIRONMENT_GET_LANGUAGE: {
+			enum retro_language *language = data;
+
+			if (!language)
+				return false;
+
+			*language = (enum retro_language) GamejinInteropLanguage();
+			return true;
+		}
 		case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS & ~RETRO_ENVIRONMENT_EXPERIMENTAL:
 			return true;
 		case RETRO_ENVIRONMENT_GET_INPUT_DEVICE_CAPABILITIES: {
