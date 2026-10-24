@@ -116,11 +116,19 @@ export default class Requests {
 		const body = text.match(/<game\b[^>]*>([\s\S]*)<\/game>/i)?.[1] ?? text;
 		const metadata = {};
 
-		for (const match of body.matchAll(/<([a-zA-Z][\w:-]*)>\s*([\s\S]*?)\s*<\/\1>/g)) {
+		for (const match of body.matchAll(/<([a-zA-Z][\w:-]*)(\s[^>]*)?>\s*([\s\S]*?)\s*<\/\1>/g)) {
 			const key = match[1].toLowerCase();
-			const value = this.#decodeXml(match[2].replace(/<[^>]+>/g, '').trim());
+			const value = this.#decodeXml(match[3].replace(/<[^>]+>/g, '').trim());
 			if (value)
-				metadata[key] = value;
+				if (key == 'website') {
+					const name = match[2]?.match(/\bname\s*=\s*["']([^"']*)["']/i)?.[1];
+					const website = name ? { name: this.#decodeXml(name), url: value } : value;
+					metadata.website = metadata.website == null ? website : [
+						...(Array.isArray(metadata.website) ? metadata.website : [metadata.website]),
+						website,
+					];
+				} else
+					metadata[key] = value;
 		}
 
 		return metadata;

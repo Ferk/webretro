@@ -289,6 +289,12 @@
 	overflow-wrap: anywhere;
 }
 
+#root .game-details-links {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
 #root .game-details-actions {
 	display: flex;
 	justify-content: flex-end;

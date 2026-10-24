@@ -9,6 +9,7 @@ import Files from '../services/files';
 import Navigation from '../services/navigation';
 import Path from '../services/path';
 import Requests from '../services/requests';
+import { md5Async } from '../services/hash';
 import { useToast } from '../hooks/toast';
 
 const encodePath = (path) => path.split('/').map(encodeURIComponent).join('/');
@@ -102,11 +103,28 @@ const fieldLabel = (key) => key
 
 const linkedFields = new Set(['website', 'trailer']);
 
+const linkedValue = (value) => {
+	if (typeof value == 'string')
+		return { url: value, label: value };
+
+	return {
+		url: value?.url ?? value?.href,
+		label: value?.name || value?.url || value?.href,
+	};
+};
+
 const fieldValue = (key, value) => {
-	if (!linkedFields.has(key) || !/^https?:\/\//i.test(value))
+	if (!linkedFields.has(key))
 		return value;
 
-	return <a href={value} target="_blank" rel="noreferrer">{value}</a>;
+	const values = Array.isArray(value) ? value : [value];
+	const links = values.map(linkedValue).filter(link => /^https?:\/\//i.test(link.url));
+	if (!links.length)
+		return value;
+
+	return <span className="game-details-links">
+		{links.map((link, index) => <a key={`${link.url}-${index}`} href={link.url} target="_blank" rel="noreferrer">{link.label}</a>)}
+	</span>;
 };
 
 /**
@@ -163,6 +181,7 @@ const GameTile = ({ system, game, status, open, action }) => {
 
 const GameDetailsModal = ({ system, game, status, close, action }) => {
 	const [index, setIndex] = useState(0);
+	const [md5sum, setMd5sum] = useState(null);
 	const primary = useRef(/** @type {HTMLButtonElement} */ (null));
 
 	useEffect(() => {
@@ -173,6 +192,28 @@ const GameDetailsModal = ({ system, game, status, close, action }) => {
 		return () => clearTimeout(timer);
 	}, [game]);
 
+	useEffect(() => {
+		let active = true;
+		const abort = new AbortController();
+		setMd5sum(null);
+
+		if (!system || !game?.installed || game.builtin)
+			return () => {
+				active = false;
+				abort.abort();
+			};
+
+		Files.read(Path.game(system.name, game.rom))
+			.then(data => data && md5Async(data, abort.signal))
+			.then(sum => sum && active && setMd5sum(sum))
+			.catch(error => console.error(error));
+
+		return () => {
+			active = false;
+			abort.abort();
+		};
+	}, [system, game]);
+
 	if (!system || !game)
 		return null;
 
@@ -180,12 +221,16 @@ const GameDetailsModal = ({ system, game, status, close, action }) => {
 	const available = game.installed || game.builtin;
 	const downloading = status.system == system.name && status.game == game.rom;
 	const platform = game.metadata?.platform || system.name;
+	const metadataEntries = Object.entries(game.metadata ?? {});
+	const developer = metadataEntries.find(([key]) => key.toLowerCase() == 'developer');
 	const fields = [
+		...(developer ? [[developer[0], fieldLabel(developer[0]), developer[1]]] : []),
+		...metadataEntries
+			.filter(([key]) => !['title', 'description', 'plot', 'platform', 'developer', 'md5sum'].includes(key.toLowerCase()))
+			.map(([key, value]) => [key, fieldLabel(key), value]),
 		['filename', 'Filename', game.rom],
 		['size', 'File size', formatSize(game.size)],
-		...Object.entries(game.metadata ?? {})
-			.filter(([key]) => !['title', 'description', 'plot', 'platform'].includes(key.toLowerCase()))
-			.map(([key, value]) => [key, fieldLabel(key), value]),
+		...(md5sum ? [['md5sum', 'MD5sum', md5sum]] : []),
 	].filter(([, , value]) => value);
 
 	return (
