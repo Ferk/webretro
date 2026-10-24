@@ -354,6 +354,25 @@ export default class Files {
 
 	static Games = class {
 		/**
+		 * @param {System[]} systems
+		 * @param {File} file
+		 * @returns {Promise<System>}
+		 */
+		static async addFile(systems, file) {
+			const lower = file.name.toLowerCase();
+			const matches = systems.filter(system =>
+				system.extensions.some(extension => lower.endsWith(extension.toLowerCase()))
+			);
+
+			if (matches.length != 1)
+				throw new Error(`Could not detect a platform for ${file.name}.`);
+
+			const data = new Uint8Array(await file.arrayBuffer());
+			await this.add(matches[0].name, file.name, data);
+			return matches[0];
+		}
+
+		/**
 		 * @returns {Promise<Game[]>}
 		 */
 		static async get() {
@@ -383,7 +402,7 @@ export default class Files {
 		 * @param {string} system
 		 * @param {string} rom
 		 * @param {Uint8Array} data
-		 * @param {Promise<void>}
+		 * @returns {Promise<void>}
 		 */
 		static async add(system, rom, data) {
 			await Files.write(Path.game(system, rom), data);

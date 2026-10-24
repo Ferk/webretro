@@ -49,11 +49,6 @@ export const AddGamesModal = ({ systems, close, update }) => {
 		reload();
 	}, []);
 
-	const detectSystem = (name) => {
-		const lower = name.toLowerCase();
-		return availableSystems.filter(system => system.extensions.some(extension => lower.endsWith(extension.toLowerCase())));
-	};
-
 	const selectFile = (event) => {
 		const selected = event.target.files?.[0] ?? null;
 		setFile(selected);
@@ -65,12 +60,7 @@ export const AddGamesModal = ({ systems, close, update }) => {
 				return;
 
 			setBusy(true);
-			const matches = detectSystem(file.name);
-			if (matches.length != 1)
-				throw new Error(`Could not detect a platform for ${file.name}.`);
-
-			const data = new Uint8Array(await file.arrayBuffer());
-			await Files.Games.add(matches[0].name, file.name, data);
+			await Files.Games.addFile(availableSystems, file);
 			setFile(null);
 			input.current.value = '';
 			await update();

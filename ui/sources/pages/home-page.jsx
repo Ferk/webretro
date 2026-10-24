@@ -249,6 +249,7 @@ export const HomePage = () => {
 	const addGames = useRef(/** @type {() => void} */ (null));
 	const deepLinkHandled = useRef(false);
 	const deepLinkResolving = useRef(false);
+	const dragDepth = useRef(0);
 
 	const [systems, setSystems] = useState(/** @type {System[]} */ ([]));
 	const [system,  setSystem]  = useState(/** @type {System}   */ (null));
@@ -256,6 +257,8 @@ export const HomePage = () => {
 	const [detailsSystem, setDetailsSystem] = useState(/** @type {System} */ (null));
 	const [detailsGame,   setDetailsGame]   = useState(/** @type {Game}   */ (null));
 	const [loading, setLoading] = useState(/** @type {boolean}  */ (false));
+	const [adding, setAdding] = useState(false);
+	const [draggingFiles, setDraggingFiles] = useState(false);
 	const [status,  setStatus]  = useState({ system: null, game: null, progress: 0 });
 
 	const [alert] = useIonAlert();
@@ -409,6 +412,81 @@ export const HomePage = () => {
 		addGames.current = Navigation.push(closeAddGames);
 	};
 
+	const hasFiles = (dataTransfer) => Array.from(dataTransfer?.types ?? []).includes('Files');
+
+	const dragEnterGames = (event) => {
+		if (!hasFiles(event.dataTransfer))
+			return;
+
+		event.preventDefault();
+		dragDepth.current++;
+		setDraggingFiles(true);
+	};
+
+	const dragLeaveGames = (event) => {
+		if (!hasFiles(event.dataTransfer))
+			return;
+
+		dragDepth.current = Math.max(0, dragDepth.current - 1);
+		if (!dragDepth.current)
+			setDraggingFiles(false);
+	};
+
+	const dragOverGames = (event) => {
+		if (!hasFiles(event.dataTransfer))
+			return;
+
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'copy';
+	};
+
+	const dropGames = async (event) => {
+		if (!hasFiles(event.dataTransfer))
+			return;
+
+		event.preventDefault();
+		dragDepth.current = 0;
+		setDraggingFiles(false);
+
+		const files = Array.from(event.dataTransfer.files);
+		if (!files.length)
+			return;
+
+		setAdding(true);
+		const failures = [];
+		let added = 0;
+
+		try {
+			const availableSystems = systems.length ? systems : await Requests.getSystems();
+			for (const file of files) {
+				try {
+					await Files.Games.addFile(availableSystems, file);
+					added++;
+				} catch (error) {
+					console.error(error);
+					failures.push(error);
+				}
+			}
+
+			if (added)
+				await update();
+		} catch (error) {
+			console.error(error);
+			failures.push(error);
+		} finally {
+			setAdding(false);
+		}
+
+		if (failures.length) {
+			const error = failures[0];
+			alert({
+				header: failures.length == 1 ? 'Add failed' : 'Some games could not be added',
+				message: error.message ?? 'Could not add the dropped game file.',
+				buttons: ['OK'],
+			});
+		}
+	};
+
 	const findLinkedGame = (value, availableSystems) => {
 		const path = deepLinkPath(value);
 		const games = availableSystems.flatMap(candidate => candidate.games.map(candidateGame => ({
@@ -519,9 +597,11 @@ export const HomePage = () => {
 			</IonHeader>
 
 			<IonContent className="games">
-				<IonLoading isOpen={loading} message="Refreshing..." spinner={null} />
+				<IonLoading isOpen={loading || adding} message={adding ? 'Adding games...' : 'Refreshing...'} spinner={null} />
 
-				<div className="game-library">
+				<div className={`game-library ${draggingFiles ? 'game-library-drop-active' : ''}`}
+					onDragEnter={dragEnterGames} onDragLeave={dragLeaveGames}
+					onDragOver={dragOverGames} onDrop={dropGames}>
 					{systems.filter(system => system.games.length).map(system =>
 						<section className="game-section" key={system.name}>
 							<header>

@@ -56,6 +56,12 @@
 	padding-bottom: 28px;
 }
 
+#root .games .game-library.game-library-drop-active {
+	outline: 2px dashed var(--ion-color-primary);
+	outline-offset: -8px;
+	background: rgba(var(--ion-color-primary-rgb), 0.08);
+}
+
 #root .games .game-section {
 	margin-bottom: 24px;
 }
