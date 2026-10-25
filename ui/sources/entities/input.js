@@ -41,6 +41,9 @@ export class InputTouch {
 
 export class InputMessage {
 	/** @type {number} */
+	port = 0;
+
+	/** @type {number} */
 	device = 0;
 
 	/** @type {number} */
@@ -52,7 +55,7 @@ export class InputMessage {
 	/**
 	 * @returns {number}
 	 */
-	static #size() { return 16; };
+	static #size() { return 20; };
 
 	/**
 	 * @param {WebAssembly.Instance} instance
@@ -68,11 +71,12 @@ export class InputMessage {
 
 		let offset = 0;
 		for (const message of messages) {
-			view.setUint32(offset + 0, message.device, true);
-			view.setUint32(offset + 4, message.id,     true);
-			view.setInt16 (offset + 8, message.value,  true);
-			view.setUint16(offset + 10, message.modifiers ?? 0, true);
-			view.setUint32(offset + 12, message.character ?? 0, true);
+			view.setUint32(offset + 0,  message.port ?? 0, true);
+			view.setUint32(offset + 4,  message.device, true);
+			view.setUint32(offset + 8,  message.id, true);
+			view.setInt16 (offset + 12, message.value, true);
+			view.setUint16(offset + 14, message.modifiers ?? 0, true);
+			view.setUint32(offset + 16, message.character ?? 0, true);
 
 			offset += this.#size();
 		}

@@ -89,6 +89,7 @@ typedef struct {
 } GamejinCheat;
 
 typedef struct {
+	uint32_t port;
 	GamejinInputDevice device;
 	GamejinInputID id;
 	int16_t value;
@@ -125,3 +126,6 @@ void GamejinSetCheats(const GamejinCheat *cheats);
 
 void GamejinSaveState();
 void GamejinRestoreState();
+size_t GamejinStateSize();
+bool GamejinSerializeState(void *data, size_t size);
+bool GamejinUnserializeState(const void *data, size_t size);

@@ -4,9 +4,6 @@ export default class Filesystem {
 	/** @type {number} */
 	static #next_id = 1;
 
-	/** @type {{ [path: string]: FileSystemSyncAccessHandle }} */
-	static #handles = [];
-
 	/**
 	 * @param {string} path
 	 * @returns {{ path: string, filename: string, directories: string[] }}
@@ -72,14 +69,18 @@ export default class Filesystem {
 	 */
 	static async #exec(path, create, action) {
 		const file = Filesystem.#parse(path);
-
-		if (!Filesystem.#handles[file.path]) {
+		// OPFS access handles lock files across tabs. Hold one only for the
+		// operation, under a shared-origin Web Lock, including on failure.
+		return navigator.locks.request(`gamejin:file:${file.path}`, async () => {
 			const directory = await Filesystem.#directory(file.path, create);
 			const handle = await directory.getFileHandle(file.filename, { create });
-			Filesystem.#handles[file.path] = await handle.createSyncAccessHandle();
-		}
-
-		return action(Filesystem.#handles[file.path]);
+			const access = await handle.createSyncAccessHandle();
+			try {
+				return action(access);
+			} finally {
+				access.close();
+			}
+		});
 	}
 
 	/**
@@ -165,8 +166,24 @@ export default class Filesystem {
 	 */
 	write(path, buffer, offset) {
 		return Filesystem.#catch(() => {
-			return Filesystem.#exec(path, true, (file) => file.write(buffer, { at: offset }));
+			return Filesystem.#exec(path, true, file => {
+				const written = file.write(buffer, { at: offset });
+				file.flush();
+				return written;
+			});
 		}, -1);
+	}
+
+	/** Replace a complete file and report storage errors to the caller. */
+	replace(path, buffer) {
+		return Filesystem.#exec(path, true, file => {
+			const written = file.write(buffer, { at: 0 });
+			if (written != buffer.byteLength)
+				throw new Error(`Incomplete write to ${path}: ${written} of ${buffer.byteLength} bytes.`);
+			file.truncate(written);
+			file.flush();
+			return written;
+		});
 	}
 
 	/**
@@ -211,14 +228,12 @@ export default class Filesystem {
 	 * @returns {number | Promise<number>}
 	 */
 	remove(path) {
-		return Filesystem.#catch(async () => {
-			this.close(path);
-
+		return Filesystem.#catch(() => navigator.locks.request(`gamejin:file:${Filesystem.#parse(path).path}`, async () => {
 			const handle = await Filesystem.#directory(path);
 			await handle.removeEntry(Filesystem.#parse(path).filename);
 
 			return 0;
-		}, -1);
+		}), -1);
 	}
 
 	/**
@@ -246,16 +261,6 @@ export default class Filesystem {
 	 * @returns {void | Promise<void>}
 	 */
 	close(path) {
-		return Filesystem.#catch(() => {
-			path = Filesystem.#parse(path).path;
-
-			if (Filesystem.#handles[path]) {
-				Filesystem.#handles[path].flush();
-				Filesystem.#handles[path].close();
-				delete Filesystem.#handles[path];
-			}
-
-			return 0;
-		}, -1);
+		return 0;
 	}
 }

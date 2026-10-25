@@ -14,6 +14,7 @@
 #include "rthreads/rthreads.h"
 
 #define LOG(msg, ...) core_log_params(__FUNCTION__, msg, __VA_ARGS__)
+#define GAMEJIN_INPUT_PORT_COUNT 4
 #define GAMEJIN_JOYPAD_INPUT_COUNT (RETRO_DEVICE_ID_JOYPAD_R3 + 1)
 
 typedef enum {
@@ -62,7 +63,7 @@ static struct CTX {
 
 	uint8_t speed;
 	atomic_bool paused;
-	bool inputs[GAMEJIN_JOYPAD_INPUT_COUNT];
+	bool inputs[GAMEJIN_INPUT_PORT_COUNT][GAMEJIN_JOYPAD_INPUT_COUNT];
 	bool keyboard[RETROK_LAST];
 	struct retro_keyboard_callback keyboard_callback;
 	struct {
@@ -490,14 +491,14 @@ static int16_t input_pointer_position(int16_t position, uint32_t extent)
 
 static int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id)
 {
-	if (port != 0)
-		return 0;
-
 	if (device == RETRO_DEVICE_JOYPAD) {
+		if (port >= GAMEJIN_INPUT_PORT_COUNT)
+			return 0;
+
 		if (id == RETRO_DEVICE_ID_JOYPAD_MASK) {
 			int16_t mask = 0;
 			for (unsigned i = 0; i < GAMEJIN_JOYPAD_INPUT_COUNT; i++) {
-				if (CTX.inputs[i])
+				if (CTX.inputs[port][i])
 					mask |= 1 << i;
 			}
 			return mask;
@@ -506,8 +507,11 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
 		if (id >= GAMEJIN_JOYPAD_INPUT_COUNT)
 			return 0;
 
-		return CTX.inputs[id];
+		return CTX.inputs[port][id];
 	}
+
+	if (port != 0)
+		return 0;
 
 	if (device == RETRO_DEVICE_POINTER) {
 		switch (id) {
@@ -860,6 +864,7 @@ bool GamejinStartGame()
 
 	CTX.sym.retro_get_system_av_info(&CTX.av);
 	CTX.sym.retro_set_controller_port_device(0, RETRO_DEVICE_JOYPAD);
+	CTX.sym.retro_set_controller_port_device(1, RETRO_DEVICE_JOYPAD);
 
 	restore_memories();
 
@@ -980,7 +985,7 @@ void GamejinSetSpeed(uint8_t speed)
 
 void GamejinSetInput(GamejinInputDevice device, GamejinInputID id, int16_t value)
 {
-	GamejinSetInputs(&(GamejinInput) { device, id, value }, 1);
+	GamejinSetInputs(&(GamejinInput) { .port = 0, .device = device, .id = id, .value = value }, 1);
 }
 
 void GamejinSetInputs(const GamejinInput *inputs, size_t count)
@@ -990,12 +995,13 @@ void GamejinSetInputs(const GamejinInput *inputs, size_t count)
 
 	for (size_t i = 0; i < count; i++) {
 		const GamejinInput *input = &inputs[i];
+		uint32_t port = input->port;
 		GamejinInputDevice device = input->device;
 		GamejinInputID id = input->id;
 		int16_t value = input->value;
 
-		if (device == RETRO_DEVICE_JOYPAD && id < GAMEJIN_JOYPAD_INPUT_COUNT) {
-			CTX.inputs[id] = value;
+		if (device == RETRO_DEVICE_JOYPAD && port < GAMEJIN_INPUT_PORT_COUNT && id < GAMEJIN_JOYPAD_INPUT_COUNT) {
+			CTX.inputs[port][id] = value;
 			continue;
 		}
 
@@ -1116,12 +1122,16 @@ void GamejinRestoreState()
 	core_lock();
 
 	size_t size = CTX.sym.retro_serialize_size();
-	if (!size)
+	if (!size) {
+		core_unlock();
 		return;
+	}
 
 	FILE *file = fopen(CTX.paths[GAMEJIN_PATH_STATE], "r");
-	if (!file)
+	if (!file) {
+		core_unlock();
 		return;
+	}
 
 	void *buffer = calloc(size, 1);
 	fread(buffer, 1, size, file);
@@ -1131,4 +1141,28 @@ void GamejinRestoreState()
 	fclose(file);
 
 	core_unlock();
+}
+
+size_t GamejinStateSize()
+{
+	core_lock();
+	size_t size = CTX.sym.retro_serialize_size();
+	core_unlock();
+	return size;
+}
+
+bool GamejinSerializeState(void *data, size_t size)
+{
+	core_lock();
+	bool result = size && size == CTX.sym.retro_serialize_size() && CTX.sym.retro_serialize(data, size);
+	core_unlock();
+	return result;
+}
+
+bool GamejinUnserializeState(const void *data, size_t size)
+{
+	core_lock();
+	bool result = size && size == CTX.sym.retro_serialize_size() && CTX.sym.retro_unserialize(data, size);
+	core_unlock();
+	return result;
 }

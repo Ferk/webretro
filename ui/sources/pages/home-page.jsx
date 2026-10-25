@@ -335,6 +335,7 @@ export const HomePage = () => {
 	const clearGameLink = () => {
 		const url = new URL(location.href);
 		url.searchParams.delete('d');
+		url.searchParams.delete('netplay');
 		history.replaceState(history.state, '', url);
 	};
 
@@ -581,9 +582,19 @@ export const HomePage = () => {
 				return;
 			}
 
-			openDetails(linked.system, linked.game);
-			if (!linked.game.installed && !linked.game.builtin && await download(linked.system, linked.game))
-				installDetailsGame(linked.system, linked.game);
+			let linkedGame = linked.game;
+			if (!linkedGame.installed && !linkedGame.builtin) {
+				if (!await download(linked.system, linkedGame))
+					return;
+
+				linkedGame = new Game(linked.system, linkedGame.rom, true, linkedGame.builtin,
+					linkedGame.metadata, linkedGame.size, linkedGame.source);
+			}
+
+			if (new URLSearchParams(location.search).has('netplay'))
+				play(linked.system, linkedGame);
+			else
+				openDetails(linked.system, linkedGame);
 		} catch (error) {
 			console.error(error);
 			clearGameLink();

@@ -15,5 +15,8 @@
 			"react-dom": "^18.2.0",
 			"react-router": "^5.0.1",
 			"react-router-dom": "^5.0.1"
+	},
+	"dependencies": {
+		"trystero": "^0.26.0"
 	}
 }

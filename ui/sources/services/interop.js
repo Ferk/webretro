@@ -288,6 +288,9 @@ export default class Interop {
 
 		this.#wrap('SaveState',          null,      []);
 		this.#wrap('RestoreState',       null,      []);
+		this.#wrap('StateSize',          'number',  []);
+		this.#wrap('SerializeState',     'boolean', ['number', 'number']);
+		this.#wrap('UnserializeState',   'boolean', ['number', 'number']);
 
 		this.ConfigureHardware(!!config.hardware);
 		this.Create(config.system, config.rom, config.contentRequired);
@@ -400,4 +403,33 @@ export default class Interop {
 
 	/** @returns {Promise<void>} */
 	restore() { this.RestoreState(); }
+
+	/** @returns {ArrayBuffer} */
+	state() {
+		const size = this.StateSize();
+		if (!size)
+			throw new Error('This core does not support serialized states required by netplay.');
+
+		const pointer = this.#instance.exports.calloc(size, 1);
+		try {
+			if (!this.SerializeState(pointer, size))
+				throw new Error('The core could not serialize its netplay state.');
+			return new Uint8Array(this.#instance.exports.memory.buffer, pointer, size).slice().buffer;
+		} finally {
+			this.#instance.exports.free(pointer);
+		}
+	}
+
+	/** @param {ArrayBuffer} state @returns {void} */
+	loadState(state) {
+		const data = new Uint8Array(state);
+		const pointer = this.#instance.exports.calloc(data.byteLength, 1);
+		try {
+			new Uint8Array(this.#instance.exports.memory.buffer, pointer, data.byteLength).set(data);
+			if (!this.UnserializeState(pointer, data.byteLength))
+				throw new Error('The core rejected the received netplay state.');
+		} finally {
+			this.#instance.exports.free(pointer);
+		}
+	}
 }

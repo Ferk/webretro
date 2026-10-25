@@ -215,4 +215,10 @@ export default class Core {
 
 	/** @returns {Promise<void>} */
 	async restore() { await this.#interop?.restore(); }
+
+	/** @returns {Promise<ArrayBuffer>} */
+	async state() { return await this.#interop?.state(); }
+
+	/** @param {ArrayBuffer} state @returns {Promise<void>} */
+	async loadState(state) { await this.#interop?.loadState(state); }
 }

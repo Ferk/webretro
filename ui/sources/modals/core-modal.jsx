@@ -1,6 +1,6 @@
-import { IonAccordion, IonAccordionGroup, IonButton, IonButtons, IonCheckbox, IonContent, IonHeader, IonIcon, IonItem, IonLabel, IonList, IonMenu, IonMenuButton, IonPage, IonSegment, IonSegmentButton, IonSelect, IonSelectOption, IonTitle, IonToolbar, useIonAlert } from '@ionic/react';
+import { IonAccordion, IonAccordionGroup, IonButton, IonButtons, IonCheckbox, IonContent, IonHeader, IonIcon, IonInput, IonItem, IonLabel, IonList, IonMenu, IonMenuButton, IonPage, IonSegment, IonSegmentButton, IonSelect, IonSelectOption, IonTitle, IonToolbar, useIonAlert } from '@ionic/react';
 import { useEffect, useRef, useState } from 'react';
-import { checkmarkOutline } from 'ionicons/icons';
+import { checkmarkOutline, copyOutline } from 'ionicons/icons';
 import { useSize } from '../hooks/size';
 import { useCore } from '../hooks/core';
 import { InputButton, InputTouch } from '../entities/input';
@@ -11,6 +11,7 @@ import { Settings } from '../entities/settings';
 import { Cheat } from '../entities/cheat';
 import Input from '../services/input';
 import AudioPlayer from '../services/audio';
+import Netplay from '../services/netplay';
 
 /**
  * @param {Object} parameters
@@ -164,16 +165,47 @@ export const CoreModal = ({ system, game, close }) => {
 	const mouseCaptured = useRef(false);
 	const releasingPointerLock = useRef(false);
 	const paused = useRef(false);
+	const netplay = useRef(/** @type {Netplay} */ (null));
+	const netplayRole = useRef(/** @type {'host'|'guest'} */ (null));
+	const netplayWaiting = useRef(false);
+	const netplaySyncing = useRef(false);
+	const netplayTimer = useRef(null);
+	const netplayStartTimer = useRef(null);
 
 	const [core, audio, speed, inputMode] = useCore(activeSystem.lib_name);
 	const activeInputMode = useRef(inputMode.value);
 	activeInputMode.current = inputMode.value;
 	const [autoOverlay, setAutoOverlay] = useState(hasTouchInput);
+	const [netplayMode, setNetplayMode] = useState(null);
+	const [netplayStatus, setNetplayStatus] = useState('Not connected');
+	const [netplayLink, setNetplayLink] = useState('');
 	const [window_w, window_h] = useSize({ current: document.body });
 	const [canvas_w, canvas_h] = useSize(canvas);
 	const overlay = inputMode.value == 'overlay' || (inputMode.value == 'auto' && autoOverlay);
 
 	const [alert] = useIonAlert();
+
+	/** @param {Object[]} messages @returns {void} */
+	const dispatchInput = (messages) => {
+		if (!messages.length)
+			return;
+
+		const session = netplay.current;
+		if (!session) {
+			core.current.input(messages);
+			return;
+		}
+
+		const port = netplayRole.current == 'guest' ? 1 : 0;
+		const local = messages.map(message => message.device == Input.Device.JOYPAD
+			? { ...message, port }
+			: message);
+		core.current.input(local);
+
+		const remote = local.filter(message => message.device == Input.Device.JOYPAD);
+		if (remote.length)
+			session.sendInput(remote).catch(error => console.error(error));
+	};
 
 	/** @returns {void} */
 	const resize = () => {
@@ -213,9 +245,10 @@ export const CoreModal = ({ system, game, close }) => {
 			return;
 		}
 
-		overlay
-			? core.current.press(touches, buttons)
-			: core.current.touch(touches[0], rect, width, height);
+		const messages = overlay
+			? touches.flatMap(touch => hardware.current.press(touch, buttons))
+			: hardware.current.touch(touches[0], rect, width, height);
+		dispatchInput(messages);
 	}
 
 	/** @param {EventTarget} target @returns {boolean} */
@@ -246,8 +279,7 @@ export const CoreModal = ({ system, game, close }) => {
 		const messages = inputMode.value == 'direct'
 			? hardware.current.directKeyboard(event)
 			: hardware.current.keyboard(event);
-		if (messages.length)
-			core.current.input(messages);
+		dispatchInput(messages);
 	}
 
 	/** @returns {void} */
@@ -256,13 +288,12 @@ export const CoreModal = ({ system, game, close }) => {
 			...hardware.current.releaseKeyboard(),
 			...hardware.current.releaseDirectKeyboard(),
 		];
-		if (messages.length)
-			core.current.input(messages);
+		dispatchInput(messages);
 	}
 
 	/** @param {string} mode @returns {void} */
 	const syncPause = (mode = activeInputMode.current) => {
-		const shouldPause = menuOpen.current || (mode == 'direct' && !mouseCaptured.current);
+		const shouldPause = menuOpen.current || netplayWaiting.current || (mode == 'direct' && !mouseCaptured.current);
 		if (paused.current == shouldPause)
 			return;
 
@@ -271,6 +302,158 @@ export const CoreModal = ({ system, game, close }) => {
 		core.current?.pause(shouldPause);
 		shouldPause ? AudioPlayer.pause() : AudioPlayer.resume();
 	}
+
+	const clearNetplayTimer = () => {
+		clearInterval(netplayTimer.current);
+		netplayTimer.current = null;
+		clearTimeout(netplayStartTimer.current);
+		netplayStartTimer.current = null;
+	};
+
+	/** @param {number[]} ports @returns {void} */
+	const releaseNetplayInputs = (ports) => core.current.input(ports.flatMap(port =>
+		Input.Joypad.ALL.map(id => ({ port, device: Input.Device.JOYPAD, id, value: 0 }))));
+
+	const netplayError = (error) => {
+		console.error(error);
+		setNetplayStatus(error.message ?? 'Netplay connection failed.');
+		alert({
+			header: 'Netplay error',
+			message: error.message ?? 'The peer-to-peer session failed.',
+			buttons: ['OK'],
+		});
+	};
+
+	const sendNetplayState = async (session = netplay.current) => {
+		if (!session?.connected || netplaySyncing.current)
+			return;
+
+		netplaySyncing.current = true;
+		try {
+			await session.sendState(await core.current.state());
+		} catch (error) {
+			netplayError(error);
+		} finally {
+			netplaySyncing.current = false;
+		}
+	};
+
+	const activateNetplay = (session) => {
+		if (netplay.current != session || !session.connected)
+			return;
+
+		netplayStartTimer.current = null;
+		netplayWaiting.current = false;
+		setNetplayStatus(netplayRole.current == 'host' ? 'Player 2 connected' : 'Connected as player 2');
+		syncPause();
+
+		if (netplayRole.current == 'host') {
+			menu.current?.close();
+			clearNetplayTimer();
+			netplayTimer.current = setInterval(() => sendNetplayState(), 10000);
+		}
+	};
+
+	const beginNetplay = (roomId, role) => {
+		if (netplay.current)
+			return;
+		if (activeSystem.hardwareRendering) {
+			netplayError(new Error('Netplay is not available for hardware-rendered cores yet.'));
+			return;
+		}
+
+		netplayRole.current = role;
+		netplayWaiting.current = true;
+		setNetplayMode(role);
+		setNetplayStatus(role == 'host' ? 'Waiting for player 2' : 'Connecting to host');
+		syncPause();
+
+		let session;
+		session = new Netplay(roomId, role, {
+			peer: async () => {
+				if (netplay.current != session)
+					return;
+				setNetplayStatus('Synchronizing game state');
+				if (role == 'host')
+					await sendNetplayState(session);
+			},
+			input: messages => core.current.input(messages),
+			state: async state => {
+				if (netplay.current != session)
+					return;
+				try {
+					await core.current.loadState(state);
+					if (role == 'guest' && netplayWaiting.current)
+						await session.sendControl({ type: 'ready' });
+				} catch (error) {
+					netplayError(error);
+				}
+			},
+			control: async message => {
+				if (netplay.current != session)
+					return;
+				if (message.type == 'ready' && role == 'host') {
+					const delay = 500;
+					const roundTrip = await session.ping().catch(() => 0);
+					await session.sendControl({ type: 'start', delay });
+					netplayStartTimer.current = setTimeout(() => activateNetplay(session), delay + roundTrip / 2);
+				} else if (message.type == 'start' && role == 'guest') {
+					netplayStartTimer.current = setTimeout(() => activateNetplay(session), message.delay ?? 500);
+				}
+			},
+			leave: () => {
+				if (netplay.current != session)
+					return;
+				clearNetplayTimer();
+				releaseNetplayInputs([role == 'host' ? 1 : 0]);
+				netplayWaiting.current = true;
+				setNetplayStatus(role == 'host' ? 'Waiting for player 2' : 'Host disconnected');
+				syncPause();
+			},
+			error: netplayError,
+		});
+		netplay.current = session;
+	};
+
+	const startNetplay = () => {
+		const roomId = crypto.randomUUID().replaceAll('-', '');
+		const url = new URL(location.href);
+		url.searchParams.set('netplay', roomId);
+		history.replaceState(history.state, '', url);
+		setNetplayLink(url.href);
+		beginNetplay(roomId, 'host');
+	};
+
+	const copyNetplayLink = async () => {
+		try {
+			await navigator.clipboard.writeText(netplayLink);
+			setNetplayStatus('Invite link copied');
+		} catch (error) {
+			netplayError(error);
+		}
+	};
+
+	const leaveNetplay = async (clearUrl = true) => {
+		clearNetplayTimer();
+		const session = netplay.current;
+		netplay.current = null;
+		netplayRole.current = null;
+		netplayWaiting.current = false;
+		netplaySyncing.current = false;
+		setNetplayMode(null);
+		setNetplayStatus('Not connected');
+		setNetplayLink('');
+
+		releaseNetplayInputs([0, 1]);
+		await session?.leave();
+
+		if (clearUrl) {
+			const url = new URL(location.href);
+			url.searchParams.delete('netplay');
+			history.replaceState(history.state, '', url);
+		}
+		syncPause();
+	};
 
 	/** @returns {void} */
 	const requestMouseCapture = (mode = activeInputMode.current) => {
@@ -329,7 +512,11 @@ export const CoreModal = ({ system, game, close }) => {
 			try {
 				await core.init(activeSystem.name, activeGame.rom, activeSystem.contentRequired, canvas.current, activeSystem.hardwareRendering).then(() => resize());
 				paused.current = null;
-				syncPause();
+				const roomId = new URLSearchParams(location.search).get('netplay');
+				if (roomId)
+					beginNetplay(roomId, 'guest');
+				else
+					syncPause();
 			} catch (e) {
 				console.error(e);
 				const error = explainStartupError(e);
@@ -342,7 +529,13 @@ export const CoreModal = ({ system, game, close }) => {
 			}
 		})()
 
-		return () => core.current.stop();
+		return () => {
+			clearNetplayTimer();
+			const session = netplay.current;
+			netplay.current = null;
+			session?.leave().catch(error => console.error(error));
+			core.current.stop();
+		};
 	}, []);
 
 	useEffect(() => {
@@ -360,8 +553,7 @@ export const CoreModal = ({ system, game, close }) => {
 
 			const rect = canvas.current.getBoundingClientRect();
 			const messages = hardware.current.mouse(event, rect, canvas.current.width, canvas.current.height);
-			if (messages.length)
-				core.current.input(messages);
+			dispatchInput(messages);
 		};
 
 		// Pointer Lock retargets input to the locked element. Listen at the window
@@ -415,8 +607,8 @@ export const CoreModal = ({ system, game, close }) => {
 			if (inputMode.value == 'auto' && messages.some(message => message.value))
 				setAutoOverlay(false);
 
-			if (messages.length && inputMode.value != 'direct')
-				core.current.input(messages);
+			if (inputMode.value != 'direct')
+				dispatchInput(messages);
 
 			if (!stopped)
 				frame = requestAnimationFrame(poll);
@@ -478,6 +670,23 @@ export const CoreModal = ({ system, game, close }) => {
 									<IonSelectOption value="direct">Direct Keyboard/Mouse</IonSelectOption>}
 							</IonSelect>
 						</IonItem>
+						<IonItem>
+							<IonLabel>
+								<h2>Netplay</h2>
+								<p>{netplayStatus}</p>
+							</IonLabel>
+							{!netplayMode &&
+								<IonButton fill="outline" onClick={startNetplay} disabled={activeSystem.hardwareRendering}>Start session</IonButton>}
+							{netplayMode &&
+								<IonButton fill="outline" color="danger" onClick={() => leaveNetplay()}>Disconnect</IonButton>}
+						</IonItem>
+						{netplayMode == 'host' && netplayLink &&
+							<IonItem>
+								<IonInput label="Invite link" labelPlacement="stacked" value={netplayLink} readonly={true} />
+								<IonButton slot="end" fill="clear" onClick={copyNetplayLink} aria-label="Copy invite link">
+									<IonIcon slot="icon-only" icon={copyOutline} />
+								</IonButton>
+							</IonItem>}
 						<IonAccordionGroup>
 							<SettingsView variables={core.variables} settings={core.settings} update={core.update}></SettingsView>
 							<CheatsView cheats={core.cheats}></CheatsView>
