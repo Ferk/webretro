@@ -7,7 +7,7 @@ DEPS_DIR := ../deps
 DEPS     := $(DEPS_DIR)/libz.a $(DEPS_DIR)/libretro.a
 
 CORES_DIR := ../cores
-CORES     := $(shell jq -r 'keys[]' $(CORES_DIR)/cores.json)
+CORES     := $(shell jq -r '.[].id' $(CORES_DIR)/cores.json)
 
 DEFINES := \
 	-I$(DEPS_DIR)/libretro-common/include
@@ -41,10 +41,10 @@ prepare:
 
 $(OUT_DIR)/%.wasm: $(OBJ) $(DEPS) $(CORES_DIR)/lib%.a exports.txt GNUmakefile ../GNUmakefile.common $(DEPS_DIR)/GNUmakefile $(CORES_DIR)/cores.json
 	@echo Building $*.wasm...
-	@extras=`jq -r '."$*".linkArchives[]? // empty' $(CORES_DIR)/cores.json | sed 's#^#$(CORES_DIR)/#'` && \
-	link_flags=`jq -r '."$*".linkFlags[]? // empty' $(CORES_DIR)/cores.json` && \
+	@extras=`jq -r '(.[] | select(.id == "$*")).linkArchives[]? // empty' $(CORES_DIR)/cores.json | sed 's#^#$(CORES_DIR)/#'` && \
+	link_flags=`jq -r '(.[] | select(.id == "$*")).linkFlags[]? // empty' $(CORES_DIR)/cores.json` && \
 	core_archive="$(CORES_DIR)/lib$*.a" && \
-	if test "`jq -r '."$*".wholeArchive // false' $(CORES_DIR)/cores.json`" = true; then \
+	if test "`jq -r '(.[] | select(.id == "$*")).wholeArchive // false' $(CORES_DIR)/cores.json`" = true; then \
 		core_archive="-Wl,--whole-archive $$core_archive -Wl,--no-whole-archive"; \
 	fi && \
 	$(LINK_CXX) -o $(OUT_DIR)/$*.wasm $(OBJ) $(DEPS) $$core_archive $$extras \

@@ -25,8 +25,8 @@ export default class Files {
 	/** @type {Parallel<Filesystem>} */
 	static #parallel = null
 
-	/** @type {Filesystem} */
-	static #filesystem = null
+	/** @type {Promise<Filesystem>} */
+	static #initializing = null;
 
 	/**
 	 * @param {WebAssembly.Instance} instance
@@ -102,17 +102,22 @@ export default class Files {
 	}
 
 	static async #fs() {
-		if (!this.#filesystem) {
+		if (!this.#initializing) {
 			this.#parallel = new Parallel(Filesystem, false);
-			this.#filesystem = await this.#parallel.create('filesystem');
+			this.#initializing = this.#parallel.create('filesystem').catch(error => {
+				this.#parallel.close();
+				this.#initializing = null;
+				throw error;
+			});
 		}
-		return this.#filesystem;
+		return await this.#initializing;
 	}
 
 	/**
 	 * @returns {Promise<MessagePort>}
 	 */
 	static async clone() {
+		await this.#fs();
 		return this.#parallel.open();
 	}
 
@@ -168,10 +173,7 @@ export default class Files {
 	 */
 	static async write(path, data) {
 		const fs = await this.#fs();
-
-		if (await fs.size(path) >= 0)
-			await fs.remove(path);
-		await fs.write(path, data, 0);
+		await fs.replace(path, data);
 	}
 
 	/**
@@ -206,8 +208,8 @@ export default class Files {
 			const stored = await Files.read_json(Path.library()) ?? [];
 
 			const systems = [];
-			for (const core of Object.keys(Files.#cores)) {
-				const metadata = Files.#cores[core];
+			for (const metadata of Files.#cores) {
+				const core = metadata.id;
 				const discovered = await Files.#probeCore(core);
 
 				for (const system of metadata.platforms ?? metadata.systems) {

@@ -76,6 +76,8 @@ node scripts/serve-pages.mjs dist 8000
 ## Cores
 
 `cores/cores.json` should contain only cores that are actually present as submodules under `cores/`.
+It is an ordered array: move a core entry to change the order of its platforms in the game library.
+The order of a core's `systems` array controls the order of its platforms, and each core's `id` identifies its build artifacts.
 
 To add another core later, add the submodule and then add its metadata back to `cores/cores.json`.
 

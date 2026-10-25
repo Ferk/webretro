@@ -4,7 +4,7 @@ import { basename, dirname, join, relative, sep } from 'node:path';
 const [gamesDir, manifestPath] = process.argv.slice(2);
 
 const cores = JSON.parse(await readFile('cores/cores.json', 'utf8'));
-const extensions = new Set(Object.values(cores).flatMap(core => core.extensions ?? []));
+const extensions = new Set(cores.flatMap(core => core.extensions ?? []));
 const platforms = new Map();
 const platformNames = new Set();
 
@@ -13,7 +13,7 @@ const normalize = (name) => name
 	.normalize('NFKD')
 	.replace(/[^\p{Letter}\p{Number}]+/gu, '');
 
-for (const core of Object.values(cores)) {
+for (const core of cores) {
 	for (const platform of core.platforms ?? core.systems ?? []) {
 		const name = typeof platform == 'string' ? platform : platform.name;
 		const aliases = typeof platform == 'string' ? [] : platform.aliases ?? [];

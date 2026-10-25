@@ -1,4 +1,4 @@
-LIBRARIES := $(shell jq -r 'keys[]' cores.json)
+LIBRARIES := $(shell jq -r '.[].id' cores.json)
 
 DEFINES := -D__EMSCRIPTEN__
 include ../GNUmakefile.common
@@ -19,7 +19,7 @@ clean: $(LIBRARIES:%=clean-%)
 clear: $(LIBRARIES:%=clear-%)
 
 fetch-%:
-	@name=`jq -r '."$*".repository // "$*"' cores.json` && \
+	@name=`jq -r '(.[] | select(.id == "$*")).repository // "$*"' cores.json` && \
 	if test -d "$$name"; then \
 		echo Using vendored $$name...; \
 	else \
@@ -30,23 +30,23 @@ fetch-%:
 
 lib%.a: GNUmakefile ../GNUmakefile.common ../deps/GNUmakefile cores.json | fetch-%
 	@target=`pwd`/lib$*.a && \
-	name=`jq -r '."$*".repository // "$*"' cores.json` && \
+	name=`jq -r '(.[] | select(.id == "$*")).repository // "$*"' cores.json` && \
 	source="$$name" && \
-	makedir=`jq -r '."$*".directory // ""' cores.json` && \
-	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
-	output_variable=`jq -r '."$*".outputVariable // "TARGET"' cores.json` && \
-	cmake=`jq -r '."$*".cmake // false' cores.json` && \
-	patches=`jq -r '."$*".patches[]? // empty' cores.json` && \
-	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
-	cmake_flags=`jq -r '."$*".cmakeFlags[]? // empty' cores.json` && \
+	makedir=`jq -r '(.[] | select(.id == "$*")).directory // ""' cores.json` && \
+	makefile=`jq -r '(.[] | select(.id == "$*")).makefile // "Makefile"' cores.json` && \
+	output_variable=`jq -r '(.[] | select(.id == "$*")).outputVariable // "TARGET"' cores.json` && \
+	cmake=`jq -r '(.[] | select(.id == "$*")).cmake // false' cores.json` && \
+	patches=`jq -r '(.[] | select(.id == "$*")).patches[]? // empty' cores.json` && \
+	platform=`jq -r '(.[] | select(.id == "$*")).platform // "emscripten"' cores.json` && \
+	cmake_flags=`jq -r '(.[] | select(.id == "$*")).cmakeFlags[]? // empty' cores.json` && \
 	cmake_c_flags='$(DEFINES)' && \
 	cmake_cxx_flags='$(DEFINES)' && \
-	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
-	compiler_flags=`jq -r '."$*".compilerFlags[]? // empty' cores.json` && \
-	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
-	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
-	preinclude=`jq -r '."$*".preinclude // ""' cores.json` && \
-	preinclude_files=`jq -r '."$*".preincludeFiles? // ["*"] | join(":")' cores.json` && \
+	extra_flags=`jq -r '(.[] | select(.id == "$*")).buildFlags[]? // empty' cores.json` && \
+	compiler_flags=`jq -r '(.[] | select(.id == "$*")).compilerFlags[]? // empty' cores.json` && \
+	c_flags=`jq -r '(.[] | select(.id == "$*")).cFlags // ""' cores.json` && \
+	cxx_flags=`jq -r '(.[] | select(.id == "$*")).cxxFlags // ""' cores.json` && \
+	preinclude=`jq -r '(.[] | select(.id == "$*")).preinclude // ""' cores.json` && \
+	preinclude_files=`jq -r '(.[] | select(.id == "$*")).preincludeFiles? // ["*"] | join(":")' cores.json` && \
 	if test -n "$$preinclude"; then \
 		case "$$preinclude" in \
 			/*) ;; \
@@ -78,17 +78,17 @@ lib%.a: GNUmakefile ../GNUmakefile.common ../deps/GNUmakefile cores.json | fetch
 	cxx='$(CXX)' && \
 	ar='$(AR)' && \
 	ranlib='$(RANLIB)' && \
-	if test "`jq -r '."$*".useEmscripten // false' cores.json`" = true; then \
+	if test "`jq -r '(.[] | select(.id == "$*")).useEmscripten // false' cores.json`" = true; then \
 		cc=`command -v emcc`; \
 		cxx=`command -v em++`; \
 		ar=`command -v emar`; \
 		ranlib=`command -v emranlib`; \
 	fi && \
-	if test "`jq -r '."$*" | if has("defineEmscripten") then .defineEmscripten else true end' cores.json`" != true; then \
+	if test "`jq -r '(.[] | select(.id == "$*")) | if has("defineEmscripten") then .defineEmscripten else true end' cores.json`" != true; then \
 		cmake_c_flags=`printf '%s\n' "$$cmake_c_flags" | sed 's/-D__EMSCRIPTEN__//g'`; \
 		cmake_cxx_flags=`printf '%s\n' "$$cmake_cxx_flags" | sed 's/-D__EMSCRIPTEN__//g'`; \
 	fi && \
-	if test "`jq -r '."$*".stripEmccSettings // false' cores.json`" = true; then \
+	if test "`jq -r '(.[] | select(.id == "$*")).stripEmccSettings // false' cores.json`" = true; then \
 		cc="`pwd`/../scripts/wasi-filter-cc $$cc"; \
 		cxx="`pwd`/../scripts/wasi-filter-cc $$cxx"; \
 	fi && \
@@ -147,27 +147,27 @@ lib%.a: GNUmakefile ../GNUmakefile.common ../deps/GNUmakefile cores.json | fetch
 
 clear-%:
 	@rm -f `pwd`/lib$*.a
-	@name=`jq -r '."$*".repository // "$*"' cores.json` && \
+	@name=`jq -r '(.[] | select(.id == "$*")).repository // "$*"' cores.json` && \
 	rm -rf `pwd`/$*-libs `pwd`/../build/cores/$$name `pwd`/../build/cores/patched/$$name
 
 clean-%: clear-%
 	@target=`pwd`/lib$*.a && \
-	name=`jq -r '."$*".repository // "$*"' cores.json` && \
-	cmake=`jq -r '."$*".cmake // false' cores.json` && \
-	patches=`jq -r '."$*".patches[]? // empty' cores.json` && \
+	name=`jq -r '(.[] | select(.id == "$*")).repository // "$*"' cores.json` && \
+	cmake=`jq -r '(.[] | select(.id == "$*")).cmake // false' cores.json` && \
+	patches=`jq -r '(.[] | select(.id == "$*")).patches[]? // empty' cores.json` && \
 	if test "$$cmake" = true || test -n "$$patches"; then \
 		exit 0; \
 	fi && \
-	makedir=`jq -r '."$*".directory // ""' cores.json` && \
-	makefile=`jq -r '."$*".makefile // "Makefile"' cores.json` && \
-	output_variable=`jq -r '."$*".outputVariable // "TARGET"' cores.json` && \
-	platform=`jq -r '."$*".platform // "emscripten"' cores.json` && \
-	extra_flags=`jq -r '."$*".buildFlags[]? // empty' cores.json` && \
-	compiler_flags=`jq -r '."$*".compilerFlags[]? // empty' cores.json` && \
-	c_flags=`jq -r '."$*".cFlags // ""' cores.json` && \
-	cxx_flags=`jq -r '."$*".cxxFlags // ""' cores.json` && \
-	preinclude=`jq -r '."$*".preinclude // ""' cores.json` && \
-	preinclude_files=`jq -r '."$*".preincludeFiles? // ["*"] | join(":")' cores.json` && \
+	makedir=`jq -r '(.[] | select(.id == "$*")).directory // ""' cores.json` && \
+	makefile=`jq -r '(.[] | select(.id == "$*")).makefile // "Makefile"' cores.json` && \
+	output_variable=`jq -r '(.[] | select(.id == "$*")).outputVariable // "TARGET"' cores.json` && \
+	platform=`jq -r '(.[] | select(.id == "$*")).platform // "emscripten"' cores.json` && \
+	extra_flags=`jq -r '(.[] | select(.id == "$*")).buildFlags[]? // empty' cores.json` && \
+	compiler_flags=`jq -r '(.[] | select(.id == "$*")).compilerFlags[]? // empty' cores.json` && \
+	c_flags=`jq -r '(.[] | select(.id == "$*")).cFlags // ""' cores.json` && \
+	cxx_flags=`jq -r '(.[] | select(.id == "$*")).cxxFlags // ""' cores.json` && \
+	preinclude=`jq -r '(.[] | select(.id == "$*")).preinclude // ""' cores.json` && \
+	preinclude_files=`jq -r '(.[] | select(.id == "$*")).preincludeFiles? // ["*"] | join(":")' cores.json` && \
 	flag_args= && \
 	if test -n "$$c_flags"; then flag_args="$$flag_args CFLAGS=$$c_flags"; fi && \
 	if test -n "$$cxx_flags"; then flag_args="$$flag_args CXXFLAGS=$$cxx_flags"; fi && \
@@ -175,13 +175,13 @@ clean-%: clear-%
 	cxx='$(CXX)' && \
 	ar='$(AR)' && \
 	ranlib='$(RANLIB)' && \
-	if test "`jq -r '."$*".useEmscripten // false' cores.json`" = true; then \
+	if test "`jq -r '(.[] | select(.id == "$*")).useEmscripten // false' cores.json`" = true; then \
 		cc=`command -v emcc`; \
 		cxx=`command -v em++`; \
 		ar=`command -v emar`; \
 		ranlib=`command -v emranlib`; \
 	fi && \
-	if test "`jq -r '."$*".stripEmccSettings // false' cores.json`" = true; then \
+	if test "`jq -r '(.[] | select(.id == "$*")).stripEmccSettings // false' cores.json`" = true; then \
 		cc="`pwd`/../scripts/wasi-filter-cc $$cc"; \
 		cxx="`pwd`/../scripts/wasi-filter-cc $$cxx"; \
 	fi && \

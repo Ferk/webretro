@@ -1,111 +1,23 @@
-{
-	"gambatte": {
-		"name": "Gambatte",
-		"repository": "gambatte-libretro",
-		"extensions": [".gb", ".gbc", ".dmg"],
-		"platformAliases": {
-			"Game Boy": ["GB", "Nintendo Game Boy"],
-			"Game Boy Color": ["GBC", "Nintendo Game Boy Color"]
-		},
-		"systems": ["Game Boy", "Game Boy Color"]
-	},
-	"mgba": {
-		"name": "mGBA",
-		"repository": "mgba",
+[
+	{
+		"id": "vircon32",
+		"name": "Vircon32",
+		"repository": "vircon32-libretro",
 		"cmake": true,
-		"extensions": [".gba"],
-		"platformAliases": {
-			"Game Boy Advance": ["GBA", "Nintendo Game Boy Advance"]
-		},
-		"systems": ["Game Boy Advance"]
-	},
-	"desmume": {
-		"name": "DeSmuME",
-		"repository": "desmume",
-		"directory": "desmume/src/frontend/libretro",
-		"compilerFlags": ["-include stdlib.h"],
-		"preinclude": "../../../../../desmume-wasi-compat.h",
-		"preincludeFiles": ["*/wifi.cpp", "wifi.cpp", "*/rthreads.c", "rthreads.c"],
-		"extensions": [".nds"],
-		"platformAliases": {
-			"Nintendo DS": ["NDS", "DS"]
-		},
-		"systems": ["Nintendo DS"]
-	},
-	"dosbox": {
-		"name": "DOSBox Pure",
-		"repository": "dosbox-pure",
-		"directKeyboardMouse": true,
-		"outputVariable": "OUTNAME",
-		"buildFlags": ["NO_EXCEPTIONS=1"],
-		"compilerFlags": ["-include new"],
-		"patches": ["cores/patches/dosbox-pure/wasi-no-cxx-exceptions.patch"],
-		"extensions": [".zip", ".dosz", ".exe", ".com", ".bat", ".iso", ".chd", ".cue", ".ins", ".img", ".ima", ".vhd", ".jrc", ".m3u", ".m3u8", ".conf"],
-		"platformAliases": {
-			"DOS": ["DOSBox", "DOSBox Pure", "MS-DOS", "PC", "IBM PC", "DOS Games"]
-		},
-		"systems": ["DOS"],
-		"builtinGames": []
-	},
-	"mesen": {
-		"name": "Mesen",
-		"repository": "Mesen",
-		"directory": "Libretro",
-		"buildFlags": ["LTO="],
-		"extensions": [".nes", ".fds"],
-		"platformAliases": {
-			"NES": ["Nintendo Entertainment System", "Famicom", "FDS", "Family Computer Disk System"]
-		},
-		"systems": ["NES"]
-	},
-	"snes9x": {
-		"name": "Snes9x",
-		"directory": "libretro",
-		"extensions": [".sfc", ".smc", ".fig", ".swc"],
-		"platformAliases": {
-			"SNES": ["Super Nintendo", "Super Nintendo Entertainment System", "Super Famicom", "SFC"]
-		},
-		"systems": ["SNES"]
-	},
-	"genesis": {
-		"name": "Genesis Plus GX",
-		"repository": "Genesis-Plus-GX",
-		"makefile": "Makefile.libretro",
-		"extensions": [".sms", ".gg", ".sg", ".md", ".gen", ".smd", ".bin"],
-		"platformAliases": {
-			"Master System": ["Sega Master System", "SMS", "Game Gear", "GG", "SG-1000"],
-			"Mega Drive": ["Sega Mega Drive", "Genesis", "Sega Genesis", "MD"]
-		},
-		"systems": ["Master System", "Mega Drive"]
-	},
-	"pcsx": {
-		"name": "PCSX-ReARMed",
-		"repository": "pcsx_rearmed",
-		"makefile": "Makefile.libretro",
-		"stripEmccSettings": true,
-		"buildFlags": ["USE_MINIZ=1", "BUILTIN_GPU=peops"],
-		"extensions": [".cue", ".iso", ".chd", ".pbp", ".bin"],
-		"platformAliases": {
-			"PlayStation": ["PS1", "PSX", "Sony PlayStation"]
-		},
-		"systems": ["PlayStation"]
-	},
-	"fake08": {
-		"name": "Fake-08",
-		"repository": "fake-08",
-		"directory": "platform/libretro",
-		"compilerFlags": ["-include stdlib.h"],
-		"patches": ["cores/patches/fake-08/input-repeat.patch"],
-		"preinclude": "../../../wasi-compat.h",
-		"preincludeFiles": ["*/z8lua/ldo.c", "*/z8lua/loslib.c", "ldo.c", "loslib.c"],
-		"extensions": [".p8", ".p8.png"],
+		"cmakeFlags": ["-DENABLE_OPENGLES2=1"],
+		"cFlags": "-I../../../deps/gamejin-gles2",
+		"cxxFlags": "-I../../../deps/gamejin-gles2",
+		"patches": ["cores/patches/vircon32-libretro/0001-Pass-frontend-language-to-cartridges-at-startup.patch"],
+		"hardwareRendering": true,
+		"extensions": [".v32"],
 		"builtinGames": [],
 		"platformAliases": {
-			"PICO-8": ["PICO8", "Pico-8", "Pico8"]
+			"Vircon32": ["Vircon 32", "V32"]
 		},
-		"systems": ["PICO-8"]
+		"systems": ["Vircon32"]
 	},
-	"tic80": {
+	{
+		"id": "tic80",
 		"name": "TIC-80",
 		"repository": "TIC-80",
 		"directory": "core",
@@ -114,9 +26,7 @@
 		"defineEmscripten": false,
 		"cFlags": "-DMA_3DS -DL_tmpnam=32 -D_WASI_EMULATED_PROCESS_CLOCKS",
 		"linkFlags": ["-lwasi-emulated-process-clocks"],
-		"patches": [
-			"cores/patches/TIC-80/0002-Protect-Fennel-Lua-calls-on-WASM.patch"
-		],
+		"patches": [ "cores/patches/TIC-80/0002-Protect-Fennel-Lua-calls-on-WASM.patch" ],
 		"extensions": [".tic"],
 		"platformAliases": {
 			"TIC-80": ["TIC80", "TIC"]
@@ -135,28 +45,128 @@
 			"tic80-libs/libblipbuf.a"
 		]
 	},
-	"2048": {
+	{
+		"id": "fake08",
+		"name": "Fake-08",
+		"repository": "fake-08",
+		"directory": "platform/libretro",
+		"compilerFlags": ["-include stdlib.h"],
+		"patches": ["cores/patches/fake-08/input-repeat.patch"],
+		"preinclude": "../../../wasi-compat.h",
+		"preincludeFiles": ["*/z8lua/ldo.c", "*/z8lua/loslib.c", "ldo.c", "loslib.c"],
+		"extensions": [".p8", ".p8.png"],
+		"builtinGames": [],
+		"platformAliases": {
+			"PICO-8": ["PICO8", "Pico-8", "Pico8"]
+		},
+		"systems": ["PICO-8"]
+	},
+	{
+		"id": "gambatte",
+		"name": "Gambatte",
+		"repository": "gambatte-libretro",
+		"extensions": [".gb", ".gbc", ".dmg"],
+		"platformAliases": {
+			"Game Boy": ["GB", "Nintendo Game Boy"],
+			"Game Boy Color": ["GBC", "Nintendo Game Boy Color"]
+		},
+		"systems": ["Game Boy", "Game Boy Color"]
+	},
+	{
+		"id": "mgba",
+		"name": "mGBA",
+		"repository": "mgba",
+		"cmake": true,
+		"extensions": [".gba"],
+		"platformAliases": {
+			"Game Boy Advance": ["GBA", "Nintendo Game Boy Advance"]
+		},
+		"systems": ["Game Boy Advance"]
+	},
+	{
+		"id": "desmume",
+		"name": "DeSmuME",
+		"repository": "desmume",
+		"directory": "desmume/src/frontend/libretro",
+		"compilerFlags": ["-include stdlib.h"],
+		"preinclude": "../../../../../desmume-wasi-compat.h",
+		"preincludeFiles": ["*/wifi.cpp", "wifi.cpp", "*/rthreads.c", "rthreads.c"],
+		"extensions": [".nds"],
+		"platformAliases": {
+			"Nintendo DS": ["NDS", "DS"]
+		},
+		"systems": ["Nintendo DS"]
+	},
+	{
+		"id": "dosbox",
+		"name": "DOSBox Pure",
+		"repository": "dosbox-pure",
+		"directKeyboardMouse": true,
+		"outputVariable": "OUTNAME",
+		"buildFlags": ["NO_EXCEPTIONS=1"],
+		"compilerFlags": ["-include new"],
+		"patches": ["cores/patches/dosbox-pure/wasi-no-cxx-exceptions.patch"],
+		"extensions": [".zip", ".dosz", ".exe", ".com", ".bat", ".iso", ".chd", ".cue", ".ins", ".img", ".ima", ".vhd", ".jrc", ".m3u", ".m3u8", ".conf"],
+		"platformAliases": {
+			"DOS": ["DOSBox", "DOSBox Pure", "MS-DOS", "PC", "IBM PC", "DOS Games"]
+		},
+		"systems": ["DOS"],
+		"builtinGames": []
+	},
+	{
+		"id": "mesen",
+		"name": "Mesen",
+		"repository": "Mesen",
+		"directory": "Libretro",
+		"buildFlags": ["LTO="],
+		"extensions": [".nes", ".fds"],
+		"platformAliases": {
+			"NES": ["Nintendo Entertainment System", "Famicom", "FDS", "Family Computer Disk System"]
+		},
+		"systems": ["NES"]
+	},
+	{
+		"id": "snes9x",
+		"name": "Snes9x",
+		"directory": "libretro",
+		"extensions": [".sfc", ".smc", ".fig", ".swc"],
+		"platformAliases": {
+			"SNES": ["Super Nintendo", "Super Nintendo Entertainment System", "Super Famicom", "SFC"]
+		},
+		"systems": ["SNES"]
+	},
+	{
+		"id": "genesis",
+		"name": "Genesis Plus GX",
+		"repository": "Genesis-Plus-GX",
+		"makefile": "Makefile.libretro",
+		"extensions": [".sms", ".gg", ".sg", ".md", ".gen", ".smd", ".bin"],
+		"platformAliases": {
+			"Master System": ["Sega Master System", "SMS", "Game Gear", "GG", "SG-1000"],
+			"Mega Drive": ["Sega Mega Drive", "Genesis", "Sega Genesis", "MD"]
+		},
+		"systems": ["Master System", "Mega Drive"]
+	},
+	{
+		"id": "pcsx",
+		"name": "PCSX-ReARMed",
+		"repository": "pcsx_rearmed",
+		"makefile": "Makefile.libretro",
+		"stripEmccSettings": true,
+		"buildFlags": ["USE_MINIZ=1", "BUILTIN_GPU=peops"],
+		"extensions": [".cue", ".iso", ".chd", ".pbp", ".bin"],
+		"platformAliases": {
+			"PlayStation": ["PS1", "PSX", "Sony PlayStation"]
+		},
+		"systems": ["PlayStation"]
+	},
+	{
+		"id": "2048",
 		"name": "2048",
 		"repository": "libretro-2048",
 		"makefile": "Makefile.libretro",
 		"builtinGames": ["2048"],
 		"extensions": [],
 		"systems": ["Standalone Core"]
-	},
-	"vircon32": {
-		"name": "Vircon32",
-		"repository": "vircon32-libretro",
-		"cmake": true,
-		"cmakeFlags": ["-DENABLE_OPENGLES2=1"],
-		"cFlags": "-I../../../deps/gamejin-gles2",
-		"cxxFlags": "-I../../../deps/gamejin-gles2",
-		"patches": ["cores/patches/vircon32-libretro/0001-Pass-frontend-language-to-cartridges-at-startup.patch"],
-		"hardwareRendering": true,
-		"extensions": [".v32"],
-		"builtinGames": [],
-		"platformAliases": {
-			"Vircon32": ["Vircon 32", "V32"]
-		},
-		"systems": ["Vircon32"]
 	}
-}
+]

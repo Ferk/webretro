@@ -41,11 +41,11 @@ export default class Requests {
 			return;
 
 		const cores = await this.#getCores();
-		this.#extensions = new Set(Object.values(cores).flatMap(core => core.extensions ?? []));
+		this.#extensions = new Set(cores.flatMap(core => core.extensions ?? []));
 		this.#platforms = new Map();
 		this.#platformNames = new Set();
 
-		for (const core of Object.values(cores)) {
+		for (const core of cores) {
 			for (const platform of core.platforms ?? core.systems ?? []) {
 				const name = typeof platform == 'string' ? platform : platform.name;
 				const aliases = typeof platform == 'string' ? [] : platform.aliases ?? [];
@@ -77,7 +77,7 @@ export default class Requests {
 		const lower = path.toLowerCase();
 		const matches = [];
 
-		for (const games of Object.values(this.#cores)) {
+		for (const games of this.#cores) {
 			for (const system of games.platforms ?? games.systems ?? []) {
 				const name = typeof system == 'string' ? system : system.name;
 				if ((games.extensions ?? []).some(extension => lower.endsWith(extension.toLowerCase())))
